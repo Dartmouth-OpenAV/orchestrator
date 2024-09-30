@@ -632,7 +632,7 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
 						$microservice_tag  = explode( "/", $microservice_tag ) ;
 						$microservice_tag  = $microservice_tag[0] ;
                         if( $microservice_tag=="current" ) {
-                            $microservice_tag = getenv()['MODE'] ;
+                            $microservice_tag = getenv()['VERSION'] ;
                         }
 						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
 						if( !in_array($microservice_key, $microservice_list) ) {
@@ -648,7 +648,7 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
 						$microservice_tag  = explode( "/", $microservice_tag ) ;
 						$microservice_tag  = $microservice_tag[0] ;
                         if( $microservice_tag=="current" ) {
-                            $microservice_tag = getenv()['MODE'] ;
+                            $microservice_tag = getenv()['VERSION'] ;
                         }
 						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
 						if( !in_array($microservice_key, $microservice_list) ) {
@@ -1039,7 +1039,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
         }
 
         if( $tag=="current" ) {
-            $tag = getenv()['MODE'] ;
+            $tag = getenv()['VERSION'] ;
         }
 
         if( !isset($microservices_mapping["{$repo_owner}/{$repo_name}:{$tag}"]) ) {
