@@ -586,84 +586,6 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 }
 
 
-// function cli_apply_system_update( $system, $update_filename ) {
-// 	$system_config = [] ;
-
-// 	if( !file_exists("/data/{$system}.json") ) {
-// 		(new error_())->add( "config for system: {$system} doesn't exist at the time of status update",
-// 			                 "A8c3oAoF8qHv",
-// 					         1,
-// 					         "backend" ) ;
-// 		return false ;
-// 	}
-// 	$system_config = file_get_contents( "/data/{$system}.json" ) ;
-// 	$system_config = json_decode( $system_config, true ) ;
-// 	if( $system_config===null ) {
-// 		(new error_())->add( "config for system: {$system} doesn't parse at the time of status update",
-// 			                 "J4t9rc6Xry1n",
-// 					         1,
-// 					         "backend" ) ;
-// 		return false ;
-// 	}
-
-// 	if( !file_exists($update_filename) ) {
-// 		(new error_())->add( "status update file: {$update_filename} doesn't exist",
-// 			                 "fN8P05A6F8St",
-// 					         1,
-// 					         "backend" ) ;
-// 		return false ;
-// 	}
-// 	$update = file_get_contents( $update_filename ) ;
-// 	$update = json_decode( $update, true ) ;
-// 	if( $update_filename===null ) {
-// 		(new error_())->add( "status update in file: {$update_filename} doesn't parse",
-// 			                 "Ej941SabB3rD",
-// 					         1,
-// 					         "backend" ) ;
-// 		return false ;
-// 	}
-
-// 	// making sure we have all the microservices we'll need
-// 	$microservices = [] ;
-//     $microservices_mapping = [] ;
-//     if( !file_exists("/microservices.json") ) {
-//         (new error_())->add( "missing known microservices file",
-//                              "ST3R0Y5pF9wj",
-//                              1,
-//                              "backend" ) ;
-//         return false ;
-//     }
-//     $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
-//     if( $microservices_mapping===null ||
-//         !is_associative_array($microservices_mapping) ) {
-//         (new error_())->add( "invalid known microservices file",
-//                              "N63lL55jWhnK",
-//                              1,
-//                              "backend" ) ;
-//         return false ;
-//     }
-// 	$microservices_missing = [] ;
-// 	compile_system_microservice_list( $system_config, $microservices ) ;
-// 	foreach( $microservices as $microservice ) {
-// 		if( !array_key_exists($microservice, $microservices_mapping) ) {
-// 			$microservices_missing[] = $microservice ;
-// 		}
-// 	}
-// 	if( count($microservices_missing)>0 ) {
-// 		(new error_())->add( "microservice(s): " . implode(", ", $microservices_missing) . " are not defined on orchestrator",
-// 		                 	 "5u2Q6ytgWmNi",
-// 				         	 1,
-// 				         	 "backend" ) ;
-// 		@unlink( "/data/{$system}.status.json.lock" ) ;
-// 		return false ;
-// 	}
-
-// 	apply_update_against_config( $system_config, $microservices_mapping ) ;
-
-// 	return true ;
-// }
-
-
 function compile_system_microservice_list( $system_config, &$microservice_list ) {
 	if( is_array($system_config) && is_associative_array($system_config) ) {
 		foreach( $system_config as $key=>$value ) {
@@ -741,8 +663,6 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 								$arguments[$argument_name] = $argument_value ;
 							}
 						}
-						// $config_location_key = md5( json_encode($system_config['set']) . "|" . json_encode($system_config['get']) ) ;
-						// $arguments['config_location_key'] = $config_location_key ;
 						$system_config = call_user_func_array( $system_config['get_process']['function_name'], $arguments ) ;
 					}
 		    	} else {
@@ -778,14 +698,8 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 							$args = implode( "(", array_slice($args, 1) ) ;
 							$args = explode( ")", $args ) ;
 							$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
-							// $args = str_replace( " ", "", $args ) ;
 							$args = trim( $args ) ;
-							// $args = explode( ",", $args ) ;
-							// if( count($args)==1 ) {
-							// 	$args = $args[0] ;
-							// }
 							$args = json_decode( $args, true ) ;
-							// echo "<pre>" ;print_r( $args ) ;
 							$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
 						} else {
 							$system_config = call_user_func( $get_process_function_name, $results ) ;
@@ -793,7 +707,6 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 					}
 				}
 			} else {
-				// error_out( "get_process in system_config at " . var_export( $system_config, true ) . " is set to an unknown type, it needs to either be an array or a string.", false, false ) ;
 				(new error_())->add( "get_process is set to an unknown type, it needs to either be an array or a string",
 		                             "D3n657jcS8k4",
 		                             2,
@@ -904,7 +817,6 @@ function merge_current_status_with_update( $system_config, &$system_status, $upd
 
 				$set_as_string = json_encode( $system_config['set'] ) ;
 				preg_match_all( '/\$[a-zA-Z]{1,}[a-zA-Z0-9-_]{0,}/', $set_as_string, $matchess ) ;
-				// print_r( $matches ) ;
 				foreach( $matchess as $matches ) {
 					foreach( $matches as $match ) {
 						$match_no_dollar = str_replace( '$', "", $match ) ;
