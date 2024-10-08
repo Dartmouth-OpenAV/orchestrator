@@ -51,18 +51,40 @@ require_once( "include/memcached.php" ) ;
 // |_____|_| |_|\_/ |_|_|  \___/|_| |_|_| |_| |_|\___|_| |_|\__|
 //
 
-$required_environment_variables = [
-	'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY',
-	'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER',
-	'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH',
-] ;
-// Github authentication can either be via token or app so required environment variables may vary
-if( isset(getenv()['SYSTEM_CONFIGURATIONS_GITHUB_TOKEN']) ) {
-	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_TOKEN' ; // silly I know, just a bit clearer code
+// system configurations can be provided through several mechanisms
+if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
+	getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
+	//   1. simple folder mounted in
+	if( !is_dir("/system_configurations") ) {
+		(new error_())->add( "Missing /system_configurations volume mount",
+		                     "Ow5AID737SLX",
+				             1,
+				             "backend" ) ;
+		if( php_sapi_name()==="cli" ) {
+			echo "server misconfiguration" ;
+			exit( 1 ) ;
+		} else {
+			close_with_500( "server misconfiguration" ) ;
+			exit( 1 ) ; // for good measure
+		}
+	}
 } else {
-	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID' ;
-	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID' ;
-	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM' ;
+	//   2. GitHub repo
+	$required_environment_variables = [
+		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY',
+		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER',
+		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH',
+	] ;
+	// Github authentication can either be via token or app so required environment variables may vary
+	if( isset(getenv()['SYSTEM_CONFIGURATIONS_GITHUB_TOKEN']) ) {
+		//     2.1. with token authentication
+		$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_TOKEN' ; // silly I know, just a bit clearer code
+	} else {
+		//     2.2. with app authentication
+		$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID' ;
+		$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID' ;
+		$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM' ;
+	}
 }
 foreach( $required_environment_variables as $required_environment_variable ) {
 	if( !isset(getenv()[$required_environment_variable]) ) {
@@ -373,13 +395,27 @@ function update_system_status() {
 
 
 function cli_refresh_system_config( $system ) {
-	// $github_credentials = ['token'=>SYSTEM_CONFIGURATIONS_GITHUB_TOKEN] ;
-	$github_credentials = ['installation_id'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID,
-						   'client_id'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID,
-						   'pem'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM] ;
-	$github = new github_( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER, SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY, $github_credentials ) ;
+	$content = false ;
+	if( getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
+		// if we made it here, we've already verified that /system_configurations exists
+		if( file_exists("/system_configurations/{$system}.json") ) {
+			$content = file_get_contents( "/system_configurations/{$system}.json" ) ;
+		} // else it'll get picked up as an error later
+	} else {
+		$github_credentials = false ;
+		if( defined('SYSTEM_CONFIGURATIONS_GITHUB_TOKEN') ) {
+			$github_credentials = ['token'=>SYSTEM_CONFIGURATIONS_GITHUB_TOKEN] ;
+		} else if( defined('SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID') &&
+				   defined('SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID') &&
+				   defined('SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM') ) {
+			$github_credentials = ['installation_id'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID,
+								   'client_id'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID,
+								   'pem'=>SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM] ;
+		}
+		$github = new github_( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER, SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY, $github_credentials ) ;
 
-	$content = $github->get_file( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH . "/{$system}.json" ) ;
+		$content = $github->get_file( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH . "/{$system}.json" ) ;
+	}
 
 	if( $content===false ) {
 		// something went wrong
