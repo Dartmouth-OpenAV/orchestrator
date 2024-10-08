@@ -183,8 +183,12 @@ if( $method=="GET" &&
 	route_function_if_allowed( "get_version" ) ;
 }
 if( $method=="POST" &&
-	preg_match('/^clients\/errors$/', $path) ) {
+	preg_match('/^errors\/client$/', $path) ) {
 	route_function_if_allowed( "create_client_error" ) ;
+}
+if( $method=="GET" &&
+	preg_match('/^errors$/', $path) ) {
+	route_function_if_allowed( "list_errors" ) ;
 }
 
 close_with_400( "Unknown combination of method: {$method}, and path: {$path}" ) ;
@@ -407,6 +411,13 @@ function cli_refresh_system_config( $system ) {
 		}
 		return false ;
 	}
+
+	// the hardware section of a config is irrelevant to operation, and shouldn't be exposed
+	$content = json_decode( $content, true ) ;
+	if( isset($content[array_keys($content)[0]]['hardware']) ) {
+		unset( $content[array_keys($content)[0]]['hardware'] ) ;
+	}
+	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
 
 	file_put_contents( "/data/{$system}.json", $content, LOCK_EX ) ;
 	@unlink( "/data/{$system}.json.lock" ) ;
@@ -714,33 +725,35 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 				$get_process_function_name = $get_process_function_name[0] ;
 				$get_process_function_name = trim( $get_process_function_name ) ;
 
-				if( $get_process_function_name!="" && !function_exists($get_process_function_name) ) {
-					error_out( "get_process function {$get_process_function_name} is NOT defined, it needs to be", false, false ) ;
-					$system_config = json_encode( $results ) ;
-				} else {
-					// ok we're good
-					foreach( $results as &$result ) {
-						$result = json_decode( $result, true ) ;
-					}
-					unset( $result ) ;
-					if( substr_count($system_config['get_process'], "(")==1 &&
-						substr_count($system_config['get_process'], ")")==1 ) {
-						// looks like we have arguments to worry about
-						$args = explode( "(", $system_config['get_process'] ) ;
-						$args = implode( "(", array_slice($args, 1) ) ;
-						$args = explode( ")", $args ) ;
-						$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
-						// $args = str_replace( " ", "", $args ) ;
-						$args = trim( $args ) ;
-						// $args = explode( ",", $args ) ;
-						// if( count($args)==1 ) {
-						// 	$args = $args[0] ;
-						// }
-						$args = json_decode( $args, true ) ;
-						// echo "<pre>" ;print_r( $args ) ;
-						$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
+				if( $get_process_function_name!="" ) {
+					if( !function_exists($get_process_function_name) ) {
+						error_out( "get_process function {$get_process_function_name} is NOT defined, it needs to be", false, false ) ;
+						$system_config = json_encode( $results ) ;
 					} else {
-						$system_config = call_user_func( $get_process_function_name, $results ) ;
+						// ok we're good
+						foreach( $results as &$result ) {
+							$result = json_decode( $result, true ) ;
+						}
+						unset( $result ) ;
+						if( substr_count($system_config['get_process'], "(")==1 &&
+							substr_count($system_config['get_process'], ")")==1 ) {
+							// looks like we have arguments to worry about
+							$args = explode( "(", $system_config['get_process'] ) ;
+							$args = implode( "(", array_slice($args, 1) ) ;
+							$args = explode( ")", $args ) ;
+							$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
+							// $args = str_replace( " ", "", $args ) ;
+							$args = trim( $args ) ;
+							// $args = explode( ",", $args ) ;
+							// if( count($args)==1 ) {
+							// 	$args = $args[0] ;
+							// }
+							$args = json_decode( $args, true ) ;
+							// echo "<pre>" ;print_r( $args ) ;
+							$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
+						} else {
+							$system_config = call_user_func( $get_process_function_name, $results ) ;
+						}
 					}
 				}
 			} else {
@@ -960,6 +973,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
         $request_headers = [] ;
         $request_body = "" ;
         $repo_owner = false ;
+        $repo_path = false ;
         $repo_name = false ;
         $tag = false ;
         $device_username = false ;
@@ -999,25 +1013,43 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
         }
 
         if( gettype($microservice_call)==="string" ) {
-            $repo_owner = explode( "/", $microservice_call )[0] ;
-            $repo_name = explode( ":", explode("/", $microservice_call)[1] )[0] ;
-            $tag = explode( ":", explode("/", $microservice_call)[1] )[1] ;
-            $device_fqdn = explode( "/", $microservice_call )[2] ;
+        	$repo_parts = explode( "/", $microservice_call ) ;
+            $repo_owner = $repo_parts[0] ;
+            $repo_path = "/" ;
+            $i=1 ;
+            while( $i<count($repo_parts) &&
+            	   substr_count($repo_parts[$i], ":")==0 ) {
+            	$repo_path .= "{$repo_parts[$i]}/" ;
+	            $i++ ;
+            }
+            $repo_name = "" ;
+            if( substr_count($repo_parts[$i], ":")==1 ) {
+            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
+            }
+            $tag = explode( ":", explode("/", $microservice_call)[$i] )[1] ;
+            $i++ ;
+            $device_fqdn = explode( "/", $microservice_call )[$i] ;
             if( preg_match('/^.*\:.*\@.*$/', $device_fqdn) ) { // simple auth
                 $device_username = explode( ":", explode("@", $device_fqdn)[0] )[0] ;
                 $device_password = explode( ":", explode("@", $device_fqdn)[0] )[1] ;
                 $device_fqdn = explode( "@", $device_fqdn )[1] ;
             }
-            $microservice_path_and_get_variables = "/" . implode( "/", array_slice(explode("/", $microservice_call), 3) ) ;
+            $i++ ;
+            $microservice_path_and_get_variables = "/" . implode( "/", array_slice(explode("/", $microservice_call), $i) ) ;
         }
 
         if( $verbose ) {
-	        echo "> microservice call: {$microservice_call}\n" ;
+        	$microservice_call_to_display = $microservice_call ;
+        	if( gettype($microservice_call_to_display)!="string" ) {
+        		$microservice_call_to_display = var_export( $microservice_call_to_display, true ) ;
+        	}
+	        echo "> microservice call: {$microservice_call_to_display}\n" ;
 	        echo ">   parameters:\n" ;
 	        echo ">     request_method: {$request_method}\n" ;
 	        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
 	        echo ">     request_body: {$request_body}\n" ;
 	        echo ">     repo_owner: {$repo_owner}\n" ;
+	        echo ">     repo_path: {$repo_path}\n" ;
 	        echo ">     repo_name: {$repo_name}\n" ;
 	        echo ">     tag: {$tag}\n" ;
 	        echo ">     device_username: {$device_username}\n" ;
@@ -1028,7 +1060,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 
 	    $proceed_with_call = true ;
 
-        if( $repo_owner===false || $repo_name===false || $tag==="false" ) {
+        if( $repo_owner===false || $repo_path===false || $repo_name===false || $tag==="false" ) {
             (new error_())->add( "invalid microservice call: {$microservice_call}",
                                  "EQr87gl3YCKm",
                                  2,
@@ -1042,19 +1074,31 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
             $tag = getenv()['VERSION'] ;
         }
 
-        if( !isset($microservices_mapping["{$repo_owner}/{$repo_name}:{$tag}"]) ) {
+        if( !isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
             (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
-                                 "i61Mn7v74J9P",
+                                 "fN45HdtBEv8T",
                                  2,
                                  "backend" ) ;
-            echo ">   missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}\n" ;
+            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
             $proceed_with_call = false ;
             $results[] = null ;
         }
 
         
         if( $proceed_with_call ) {
-	        $url = $microservices_mapping["{$repo_owner}/{$repo_name}:{$tag}"] . "/" . $device_fqdn . $microservice_path_and_get_variables ;
+	        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+	        if( $device_username!==false ||
+	        	$device_password!==false ) {
+	        	if( $device_username!==false ) {
+	        		$url .= $device_username ;
+	        	}
+	        	$url .= ":" ;
+	        	if( $device_password!==false ) {
+	        		$url .= $device_password ;
+	        	}
+	        	$url .= "@" ;
+	        }
+	        $url .= $device_fqdn . $microservice_path_and_get_variables ;
 	        if( $verbose ) {
 	        	echo ">   url: {$url}\n" ;
 	        }
@@ -1117,6 +1161,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 					echo ">     response_code: {$response_code}\n" ;
 					echo ">     response:\n" ;
 					print_r( $response ) ;
+					echo "\n" ;
 				}
 
 				if( $response_code==200 ) {
@@ -1239,6 +1284,38 @@ function get_version() {
 	}
 
 	close_with_200( $version ) ;
+}
+
+
+function list_errors() {	
+	$system = null ;
+	if( isset($_GET['system']) ) {
+		if( !is_valid_system_name($_GET['system']) ) {
+			close_with_400( "invalid system name: {$system}" ) ;
+		}
+		$system = $_GET['system'] ;
+	}
+
+	$code = null ;
+	if( isset($_GET['code']) ) {
+		$code = $_GET['code'] ;
+	}
+
+	$severity = null ;
+	if( isset($_GET['severity']) ) {
+		if( !ctype_digit($_GET['severity']) ) {
+			close_with_400( "invalid severity: {$severity}" ) ;
+		}
+		$severity = (int)$_GET['severity'] ;
+	}
+
+	$channel = null ;
+	if( isset($_GET['channel']) ) {
+		$channel = $_GET['channel'] ;
+	}
+	
+
+	close_with_200( (new error_())->list($system, $code, $severity, $channel) ) ;
 }
 
 

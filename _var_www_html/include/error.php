@@ -16,6 +16,31 @@ class error_ {
 	}
 
 
+	function list( $system=null, $code=null, $severity=null, $channel=null ) {
+		$errors = [] ;
+		if( file_exists($this->error_log_file) ) {
+			$possible_new_errors = json_decode( file_get_contents($this->error_log_file), true ) ;
+			if( is_array($possible_new_errors) ) {
+				$errors = $possible_new_errors ;
+			}
+		}
+
+		$this->remove_obsolete( $errors ) ;
+
+		$errors_kept = [] ;
+		foreach( $errors as $error ) {
+			if( ($system===null || ($system!==null && $system==$error['system'])) &&
+				($code===null || ($code!==null && $code==$error['code'])) &&
+				($severity===null || ($severity!==null && $severity==$error['severity'])) &&
+				($channel===null || ($channel!==null && $channel==$error['channel'])) ) {
+				$errors_kept[] = $error ;
+			}
+		}
+
+		return $errors_kept ;
+	}
+
+
 	function add( $message, $code, $severity, $channel, $system=null ) {
 		// trace
 	    $e = new Exception() ;
@@ -26,7 +51,7 @@ class error_ {
 
 	    $time_stamp = date( "Y-m-d H:i:s" ) ;
 
-	    $new_datum = [
+	    $new_error = [
 	    	'time_stamp'=>$time_stamp,
 	    	'message'=>$message,
 	    	'code'=>$code,
@@ -45,29 +70,18 @@ class error_ {
 	    		(time()-filemtime("{$this->error_log_file}.lock"))>300 ) { // if the lock file is older than 5 minutes, we bulldoze
 	    		touch( "{$this->error_log_file}.lock" ) ;
 
-	    		$data = [] ;
+	    		$errors = [] ;
 	    		if( file_exists($this->error_log_file) ) {
-	    			$possible_new_data = json_decode( file_get_contents($this->error_log_file), true ) ;
-	    			if( is_array($possible_new_data) ) {
-	    				$data = $possible_new_data ;
+	    			$possible_new_errors = json_decode( file_get_contents($this->error_log_file), true ) ;
+	    			if( is_array($possible_new_errors) ) {
+	    				$errors = $possible_new_errors ;
 	    			}
 	    		}
-	    		$data[] = $new_datum ;
+	    		$errors[] = $new_error ;
 
-	    		// obsoletion
-	    		$indices_to_remove = [] ;
-	    		$now = time() ;
-	    		for( $i=0 ; $i<count($data) ; $i++ ) {
-	    			if( !(isset($data[$i]['time_stamp']) &&
-	    				  ($now-strtotime($data[$i]['time_stamp']))<($this->error_retention_hours*24*60*60)) ) {
-	    				$indices_to_remove[] = $i ;
-	    			}
-	    		}
-	    		foreach( $indices_to_remove as $index_to_remove ) {
-	    			unset( $data[$index_to_remove] ) ;
-	    		}
-	    		$data = array_values( $data ) ; // pack to fill index gaps
-	    		file_put_contents( $this->error_log_file, json_encode($data) ) ;
+	    		$this->remove_obsolete( $errors ) ;
+	    		
+	    		file_put_contents( $this->error_log_file, json_encode($errors) ) ;
 
 	    		$logged = true ;
 
@@ -77,6 +91,27 @@ class error_ {
 	    		$safety_counter-- ;
 	    	}
 	    }
+	}
+
+
+	function remove_obsolete( &$errors ) {
+		// obsoletion
+		$indices_to_remove = [] ;
+		$now = time() ;
+		for( $i=0 ; $i<count($errors) ; $i++ ) {
+			if( !(isset($errors[$i]['time_stamp']) &&
+				  ($now-strtotime($errors[$i]['time_stamp']))<($this->error_retention_hours*24*60*60)) ) {
+				$indices_to_remove[] = $i ;
+			}
+		}
+		if( count($indices_to_remove)>0 ) {
+			foreach( $indices_to_remove as $index_to_remove ) {
+				unset( $errors[$index_to_remove] ) ;
+			}
+			$errors = array_values( $errors ) ; // pack to fill index gaps
+		}
+
+		// no need to return, passed by reference
 	}
 }
 
