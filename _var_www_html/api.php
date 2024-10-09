@@ -51,6 +51,8 @@ require_once( "include/memcached.php" ) ;
 // |_____|_| |_|\_/ |_|_|  \___/|_| |_|_| |_| |_|\___|_| |_|\__|
 //
 
+$required_environment_variables = [] ;
+
 // system configurations can be provided through several mechanisms
 if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 	getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
@@ -70,11 +72,9 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 	}
 } else {
 	//   2. GitHub repo
-	$required_environment_variables = [
-		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY',
-		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER',
-		'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH',
-	] ;
+	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY' ;
+	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER' ;
+	$required_environment_variables[] = 'SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH' ;
 	// Github authentication can either be via token or app so required environment variables may vary
 	if( isset(getenv()['SYSTEM_CONFIGURATIONS_GITHUB_TOKEN']) ) {
 		//     2.1. with token authentication
@@ -194,32 +194,147 @@ $path = $path[0] ;
 
 if( $method=="GET" &&
 	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/status$/', $path) ) {
-	route_function_if_allowed( "get_system_status" ) ;
+	route_function_if_authorized( "get_system_status" ) ;
 }
 if( $method=="PUT" &&
 	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/status$/', $path) ) {
-	route_function_if_allowed( "update_system_status" ) ;
+	route_function_if_authorized( "update_system_status" ) ;
 }
 if( $method=="GET" &&
 	preg_match('/^version$/', $path) ) {
-	route_function_if_allowed( "get_version" ) ;
+	route_function_if_authorized( "get_version" ) ;
 }
 if( $method=="POST" &&
 	preg_match('/^errors\/client$/', $path) ) {
-	route_function_if_allowed( "create_client_error" ) ;
+	route_function_if_authorized( "create_client_error" ) ;
 }
 if( $method=="GET" &&
 	preg_match('/^errors$/', $path) ) {
-	route_function_if_allowed( "list_errors" ) ;
+	route_function_if_authorized( "list_errors" ) ;
 }
 
 close_with_400( "Unknown combination of method: {$method}, and path: {$path}" ) ;
 exit( 1 ) ;
 
 
-function route_function_if_allowed( $function_name ) {
-	// TODO actual permissions
-	$function_name() ;
+function route_function_if_authorized( $function_name ) {
+	global $method, $path ;
+
+	$authorized = false ;
+
+	if( !file_exists("/authorization.json") ) {
+		close_with_500( "server misconfiguration" ) ;
+		exit( 1 ) ; // for good measure
+	}
+	$authorization = file_get_contents( "/authorization.json" ) ;
+
+	if( $authorization=="*" ) {
+		$authorized = true ;
+	} else {
+		$authorization = json_decode( $authorization, true ) ;
+
+		if( !is_array($authorization) ) {
+			close_with_500( "server misconfiguration" ) ;
+			exit( 1 ) ; // for good measure
+		}
+		foreach( $authorization as $rule ) {
+			if( isset($rule['clients']) &&
+				is_array($rule['clients']) &&
+				isset($rule['path_regex']) &&
+				is_string($rule['path_regex']) &&
+				isset($rule['methods']) &&
+				is_array($rule['methods']) ) {
+				$client_match = false ;
+				foreach( $rule['clients'] as $client ) {
+					if( is_array($client) && count($client)==1 ) {
+						$client_match_method = array_keys($client)[0] ;
+						if( $client_match_method=="dns_regex" ) {
+							// DNS Regex authorization
+							if( is_string($client['dns_regex']) ) {
+								$client_ip = $_SERVER['REMOTE_ADDR'] ;
+								if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
+								    $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ;
+								}
+								$client_dns = resolve_dns( $client_ip ) ;
+								if( preg_match($client['dns_regex'], $client_dns) ) {
+									$client_match = true ;
+									break ;
+								}
+							} else {
+								(new error_())->add( "invalid client match dns_regex: {$client['dns_regex']}, in authorization rule:\n" . var_export( $rule, true ),
+								                     "beN52Bs1hV1R",
+										             2,
+										             "backend" ) ;
+							}
+						} else if( $client_match_method=="cidr" ) {
+							// IP CIDR authorization
+							if( is_string($client['cidr']) ) {
+								$client_ip = $_SERVER['REMOTE_ADDR'] ;
+								if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
+								    $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ;
+								}
+								if( ipCIDRCheck($client_ip, $client['cidr']) ) {
+									$client_match = true ;
+									break ;
+								}
+							} else {
+								(new error_())->add( "invalid client match cidr: {$client['cidr']}, in authorization rule:\n" . var_export( $rule, true ),
+								                     "4aB73RfXvNKg",
+										             2,
+										             "backend" ) ;
+							}
+						} else if( $client_match_method=="token" ) {
+							// Token authorization
+							if( is_string($client['token']) ) {
+								$headers = getallheaders() ;
+								if( isset($headers['Authorization']) &&
+									$headers['Authorization']==$client['token'] ) {
+									$client_match = true ;
+									break ;
+								}
+							} else {
+								(new error_())->add( "invalid client match token: {$client['token']}, in authorization rule:\n" . var_export( $rule, true ),
+								                     "kV1676Y24GkF",
+										             2,
+										             "backend" ) ;
+							}
+						} else {
+							(new error_())->add( "invalid client match method: {$client_match_method}, in authorization rule:\n" . var_export( $rule, true ),
+							                     "tQd16MK34nuC",
+									             2,
+									             "backend" ) ;
+						}
+					} else {
+						(new error_())->add( "invalid client in authorization rule:\n" . var_export( $rule, true ),
+						                     "0Xsn41TJKzam",
+								             2,
+								             "backend" ) ;
+					}
+				}
+
+				// moment of truth
+				if( $client_match===true &&
+					in_array($method, $rule['methods']) &&
+					preg_match($rule['path_regex'], $path) ) {
+					$authorized = true ;
+					break ;
+				}
+			} else {
+				(new error_())->add( "invalid authorization rule:\n" . var_export( $rule, true ) . "\n\nmissing 'clients', 'path', or 'methods'",
+				                     "Nq207jRyWSjr",
+						             2,
+						             "backend" ) ;
+			}
+		}
+	}
+	
+
+	if( $authorized===true ) {
+		$function_name() ;
+	} else {
+		close_with_403( "Not authorized" ) ;
+		exit( 1 ) ; // for good measure
+	}
 }
 
 
@@ -1319,6 +1434,17 @@ function close_with_400( $message ) {
 }
 
 
+function close_with_403( $message ) {
+
+	http_response_code( 403 ) ;
+
+	header( "Content-Type: application/json" ) ;
+
+	echo json_encode( $message ) ;
+	exit( 1 ) ;
+}
+
+
 function close_with_404( $message ) {
 
 	http_response_code( 404 ) ;
@@ -1355,33 +1481,44 @@ function resolve_dns( $fqdn ) {
 		// it's already an IP
 		return $fqdn ;
 	} else {
-		$dns_result = gethostbyname( $fqdn ) ;
+		if( isset(getenv()['DNS_HARD_CACHE']) &&
+			getenv()['DNS_HARD_CACHE']=="true" ) {
+			$cache_filename = "/data/{$fqdn}.dns" ;
+			$cache_memcache_key = "dns_cache_{$fqdn}" ;
+			$memcached = new memcached_() ;
+			$record = $memcached->retrieve( $cache_memcache_key ) ;
+			if( $record!==null ) {
+				// best case scenario: straight from memory cache
+				return $record ;
+			} else {
+				// nothing in memory, let's try persistent storage to potentially survive a reboot
+				if( file_exists($cache_filename) ) {
+					$record = json_decode( file_get_contents($cache_filename), true ) ;
+					if( is_string($record) ) {
+						// ok! we can commit this to the memory cache now for next time
+						$memcached->store( $cache_memcache_key, $record, 0 ) ;
+						return $record ;
+					}
+				} else {
+					// well then, I guess we'll do a DNS lookup
+					$dns_result = gethostbyname( $fqdn ) ;
+					if( $dns_result!=$fqdn ) { // we cache only if lookup was successful
+						file_put_contents( $cache_filename, json_encode($dns_result) ) ;
+						$memcached->store( $cache_memcache_key, $record, 0 ) ;
+					}
+					return $dns_result ;
+				}
+			}
 
-		return $dns_result ;
-		// // anything already cached?
-		// $dns_filename = "/data/dns_cache_" . md5( $fqdn ) ;
-		// $result = $memcached->retrieve( "dns_cache_{$fqdn}" ) ;
-		// if( $result===null ) {
-		// 	// let's try persistent storage
-		// 	if( file_exists($dns_filename) ) {
-		// 		$record = json_decode( file_get_contents($dns_filename) ) ;
-		// 		if( is_string($record) ) {
-		// 			// ok!
-		// 			$result = $record ;
-		// 			// we can commit this to the memory cache now for next time
-		// 			$memcached->store( "dns_cache_{$fqdn}", $result, 0 ) ;
-		// 		}
-		// 	}
-		// }
-		// if( $result!==null ) {
-		// 	return $result ;
-		// } else {
-		// 	$dns_result = gethostbyname( $fqdn ) ;
-		// 	$memcached->store( "dns_cache_{$fqdn}", $dns_result, 0 ) ;
-		// 	// and persistent cache to survive reboots
-		// 	file_put_contents( $dns_filename, json_encode($dns_result) ) ;
-		// 	return $dns_result ;
-		// }
+			// we shouldn't reach this point
+			(new error_())->add( "unreachable point looking up DNS for fqdn: {$fqdn}",
+			                     "M90ydS7Pdxpk",
+					             2,
+					             "backend" ) ;
+			return $fqdn ;
+		} else {
+			return gethostbyname( $fqdn ) ;
+		}
 	}
 }
 
@@ -1476,6 +1613,21 @@ function range_comparison( $val, $range ) {
     }
 
     return false ;
+}
+
+
+// from https://www.php.net/manual/en/ref.network.php#74656
+function ipCIDRCheck ($IP, $CIDR) {
+    list ($net, $mask) = explode ("/", $CIDR);
+
+    $ip_net = ip2long ($net);
+    $ip_mask = ~((1 << (32 - $mask)) - 1);
+
+    $ip_ip = ip2long ($IP);
+
+    $ip_ip_net = $ip_ip & $ip_mask;
+
+    return ($ip_ip_net == $ip_net);
 }
 
 
