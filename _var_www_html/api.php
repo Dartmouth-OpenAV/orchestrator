@@ -105,6 +105,23 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 	define( $required_environment_variable, getenv()[$required_environment_variable] ) ;
 }
 
+if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
+	  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
+	if( !file_exists("/microservices.json") ) {
+		(new error_())->add( "Missing /microservices.json file",
+		                     "xmL0vDH5E10m",
+				             1,
+				             "backend" ) ;
+		if( php_sapi_name()==="cli" ) {
+			echo "server misconfiguration" ;
+			exit( 1 ) ;
+		} else {
+			close_with_500( "server misconfiguration" ) ;
+			exit( 1 ) ; // for good measure
+		}
+	}
+}
+
 
 
 
@@ -228,7 +245,7 @@ function route_function_if_authorized( $function_name ) {
 	}
 	$authorization = file_get_contents( "/authorization.json" ) ;
 
-	if( $authorization=="*" ) {
+	if( trim($authorization)=="*" ) {
 		$authorized = true ;
 	} else {
 		$authorization = json_decode( $authorization, true ) ;
@@ -600,40 +617,44 @@ function cli_refresh_system_status( $system ) {
 	}
 
 	// making sure we have all the microservices we'll need
-	$microservices = [] ;
-    $microservices_mapping = [] ;
-    if( !file_exists("/microservices.json") ) {
-        (new error_())->add( "missing known microservices file",
-                             "1J6cDOU8FpXy",
-                             1,
-                             "backend" ) ;
-        @unlink( "/data/{$system}.status.json.lock" ) ;
-        return false ;
-    }
-    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
-    if( $microservices_mapping===null ||
-        !is_associative_array($microservices_mapping) ) {
-        (new error_())->add( "invalid known microservices file",
-                             "8IvN0L65xZGm",
-                             1,
-                             "backend" ) ;
-        @unlink( "/data/{$system}.status.json.lock" ) ;
-        return false ;
-    }
-	$microservices_missing = [] ;
-	compile_system_microservice_list( $system_config, $microservices ) ;
-	foreach( $microservices as $microservice ) {
-		if( !array_key_exists($microservice, $microservices_mapping) ) {
-			$microservices_missing[] = $microservice ;
+	$microservices_mapping = null ;
+	if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
+		  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
+		$microservices = [] ;
+	    $microservices_mapping = [] ;
+	    if( !file_exists("/microservices.json") ) {
+	        (new error_())->add( "missing known microservices file",
+	                             "1J6cDOU8FpXy",
+	                             1,
+	                             "backend" ) ;
+	        @unlink( "/data/{$system}.status.json.lock" ) ;
+	        return false ;
+	    }
+	    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
+	    if( $microservices_mapping===null ||
+	        !is_associative_array($microservices_mapping) ) {
+	        (new error_())->add( "invalid known microservices file",
+	                             "8IvN0L65xZGm",
+	                             1,
+	                             "backend" ) ;
+	        @unlink( "/data/{$system}.status.json.lock" ) ;
+	        return false ;
+	    }
+		$microservices_missing = [] ;
+		compile_system_microservice_list( $system_config, $microservices ) ;
+		foreach( $microservices as $microservice ) {
+			if( !array_key_exists($microservice, $microservices_mapping) ) {
+				$microservices_missing[] = $microservice ;
+			}
 		}
-	}
-	if( count($microservices_missing)>0 ) {
-		(new error_())->add( "microservice(s): " . implode(", ", $microservices_missing) . " are not defined on orchestrator",
-		                 	 "86G3OsE55Qr4",
-				         	 1,
-				         	 "backend" ) ;
-		@unlink( "/data/{$system}.status.json.lock" ) ;
-		return false ;
+		if( count($microservices_missing)>0 ) {
+			(new error_())->add( "microservice(s): " . implode(", ", $microservices_missing) . " are not defined on orchestrator",
+			                 	 "86G3OsE55Qr4",
+					         	 1,
+					         	 "backend" ) ;
+			@unlink( "/data/{$system}.status.json.lock" ) ;
+			return false ;
+		}
 	}
 
 	interpret_config_as_current_status( $system_config, $microservices_mapping ) ;
@@ -675,23 +696,27 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 		return false ;
 	}
 
-	$microservices_mapping = [] ;
-    if( !file_exists("/microservices.json") ) {
-        (new error_())->add( "missing known microservices file",
-                             "kBsS5n2Zj40F",
-                             2,
-                             "backend" ) ;
-        return false ;
-    }
-    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
-    if( $microservices_mapping===null ||
-        !is_associative_array($microservices_mapping) ) {
-        (new error_())->add( "invalid known microservices file",
-                             "8Q5z1MDfD94s",
-                             2,
-                             "backend" ) ;
-        return false ;
-    }
+	$microservices_mapping = null ;
+	if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
+		  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
+		$microservices_mapping = [] ;
+	    if( !file_exists("/microservices.json") ) {
+	        (new error_())->add( "missing known microservices file",
+	                             "kBsS5n2Zj40F",
+	                             2,
+	                             "backend" ) ;
+	        return false ;
+	    }
+	    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
+	    if( $microservices_mapping===null ||
+	        !is_associative_array($microservices_mapping) ) {
+	        (new error_())->add( "invalid known microservices file",
+	                             "8Q5z1MDfD94s",
+	                             2,
+	                             "backend" ) ;
+	        return false ;
+	    }
+	}
 
 	foreach( $microservice_sequences as $microservice_sequence ) {
 		run_microservice_sequence( $microservice_sequence, $microservices_mapping, true ) ;
@@ -1137,7 +1162,8 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
             $tag = getenv()['VERSION'] ;
         }
 
-        if( !isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
+        if( $microservices_mapping!==null &&
+        	!isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
             (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
                                  "fN45HdtBEv8T",
                                  2,
@@ -1149,7 +1175,12 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 
         
         if( $proceed_with_call ) {
-	        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+        	$url ;
+        	if( $microservices_mapping===null ) {
+        		$url = $repo_name . "/" ;
+        	} else {
+		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+		    }
 	        if( $device_username!==false ||
 	        	$device_password!==false ) {
 	        	if( $device_username!==false ) {
