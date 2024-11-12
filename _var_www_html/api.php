@@ -246,6 +246,10 @@ if( $method=="GET" &&
 	preg_match('/^errors$/', $path) ) {
 	route_function_if_authorized( "list_errors" ) ;
 }
+if( $method=="DELETE" &&
+	preg_match('/^cache$/', $path) ) {
+	route_function_if_authorized( "clear_cache" ) ;
+}
 
 close_with_400( "Unknown combination of method: {$method}, and path: {$path}" ) ;
 exit( 1 ) ;
@@ -442,10 +446,8 @@ function get_system_status() {
 				}
 				process_system_config( $content ) ;
 				file_put_contents( "/data/{$system}.json", $content ) ;
-				error_reporting( 1 ) ;
-	ini_set( "display_errors", 1 ) ;
-				unlink( "/data/{$system}.status.json" ) ;
-				unlink( "/data/{$system}.status.json.lock" ) ;
+				@unlink( "/data/{$system}.status.json" ) ;
+				@unlink( "/data/{$system}.status.json.lock" ) ;
 			}
 	}
 
