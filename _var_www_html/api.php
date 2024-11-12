@@ -104,6 +104,23 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 	}
 	define( $required_environment_variable, getenv()[$required_environment_variable] ) ;
 }
+if( isset(getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']) &&
+	getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']=="true" &&
+	!(isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
+	  getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true") ) {
+	(new error_())->add( "Environment variable: SYSTEM_CONFIGURATIONS_INSTANT_REFRESH being set to true requires environment variable SYSTEM_CONFIGURATIONS_VIA_VOLUME being set to true as well",
+		                     "7w6PMmT2tKiB",
+				             1,
+				             "backend" ) ;
+		if( php_sapi_name()==="cli" ) {
+			echo "server misconfiguration" ;
+			exit( 1 ) ;
+		} else {
+			close_with_500( "server misconfiguration" ) ;
+			exit( 1 ) ; // for good measure
+		}
+}
+
 
 if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 	  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
@@ -382,7 +399,8 @@ function get_system_status() {
 		close_with_204( "initializing" ) ;
 	}
 	// we've heard from it but let's keep the config fresh
-	if( (time()-filemtime("/data/{$system}.json"))>900 ) { // 15 minutes
+	if( (time()-filemtime("/data/{$system}.json"))>900 || // 15 minutes by default (GitHub)
+		(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" && (time()-filemtime("/data/{$system}.json"))>60) ) { // 1 minute for local
 		$refresh = false ;
 		if( file_exists("/data/{$system}.json.lock") ) {
 			if( (time()-filemtime("/data/{$system}.json.lock"))>600 ) { // 10 minutes
@@ -400,6 +418,35 @@ function get_system_status() {
 			touch( "/data/{$system}.json.lock" ) ;
 			run_cli_function( "cli_refresh_system_config", [$system] ) ;
 		}
+	}
+	// we've heard from it and we want instant refresh for development or demonstration
+	//   this is a special case and shouldn't be in effect in production
+	if( getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']=="true" &&
+		getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
+			$refresh = false ;
+			if( !file_exists("/system_configurations/{$system}.json") ) {
+				(new error_())->add( "system config from volume for instant refresh doesn't exist",
+				                     "RQ050szoObz8",
+						             1,
+						             "backend" ) ;
+				close_with_404( "system doesn't exist" ) ;
+			}
+			if( !file_exists("/data/{$system}.json") ||
+				filemtime("/system_configurations/{$system}.json")>=filemtime("/data/{$system}.json") ) { // 1 second resolution so >= to be extra safe, yes it might result in extraneous copies but the whole point is to be aggressive here
+				$refresh = true ;
+			}
+			if( $refresh ) {
+				$content = file_get_contents( "/system_configurations/{$system}.json" ) ;
+				if( !is_valid_system_config($content) ) {
+					close_with_500( "system config is invalid" ) ;
+				}
+				process_system_config( $content ) ;
+				file_put_contents( "/data/{$system}.json", $content ) ;
+				error_reporting( 1 ) ;
+	ini_set( "display_errors", 1 ) ;
+				unlink( "/data/{$system}.status.json" ) ;
+				unlink( "/data/{$system}.status.json.lock" ) ;
+			}
 	}
 
 	// we haven't refreshed this system's status yet
@@ -580,12 +627,7 @@ function cli_refresh_system_config( $system ) {
 		return false ;
 	}
 
-	// the hardware section of a config is irrelevant to operation, and shouldn't be exposed
-	$content = json_decode( $content, true ) ;
-	if( isset($content[array_keys($content)[0]]['hardware']) ) {
-		unset( $content[array_keys($content)[0]]['hardware'] ) ;
-	}
-	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
+	process_system_config( $content ) ;
 
 	file_put_contents( "/data/{$system}.json", $content, LOCK_EX ) ;
 	@unlink( "/data/{$system}.json.lock" ) ;
@@ -1505,6 +1547,19 @@ function close_with_500( $message ) {
  // | | | | __| | | | __| |/ _ \/ __|
  // | |_| | |_| | | | |_| |  __/\__ \
  //  \___/ \__|_|_|_|\__|_|\___||___/
+
+
+function process_system_config( &$content ) {
+	// the hardware section of a config is irrelevant to operation, and shouldn't be exposed
+	$content = json_decode( $content, true ) ;
+	if( isset($content[array_keys($content)[0]]['hardware']) ) {
+		unset( $content[array_keys($content)[0]]['hardware'] ) ;
+	}
+
+	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
+
+	// nothing to return, passed by reference
+}
 
 
 function resolve_dns( $fqdn ) {

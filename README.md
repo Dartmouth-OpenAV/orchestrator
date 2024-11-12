@@ -4,4 +4,11 @@ This project is licensed under the terms of the GNU General Public License (GPL)
 
 For alternative licensing options, please contact the Dartmouth College OpenAV project team.
 
-# orchestrator
+# Orchestrator
+
+The orchestrator takes a system configuration and interprets it by coordinating communication with all the microservices it refers to.
+
+
+
+# Quick Start
+
