@@ -29,4 +29,4 @@ Collection available for import: [orchestrator.collection.json](https://github.c
 
 `SYSTEM_CONFIGURATIONS_INSTANT_REFRESH` only effective when `SYSTEM_CONFIGURATIONS_VIA_VOLUME` is `true`. When set to `true` configuration files are instantaneously applied upon change. This is aggressive on the filesystem and meant only for development and demonstration purposes.
 
-`VERSION`
+`VERSION` sets what the API call to "Get Version" will return
