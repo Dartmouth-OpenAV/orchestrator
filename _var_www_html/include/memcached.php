@@ -93,6 +93,21 @@ class memcached_ {
 
         return true ;
     }
+
+
+    function flush() {
+        $this->m->flush() ;
+        $result_code = $m->getResultCode() ;
+        if( $result_code!==Memcached::RES_SUCCESS ) {
+            (new error_())->add( "unable to flush memcached",
+                                 "E6v45KtxfeMY",
+                                 3,
+                                 "backend" ) ;
+            return false ;
+        }
+
+        return true ;
+    }
 }
 
 

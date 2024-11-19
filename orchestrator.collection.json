@@ -1,0 +1,183 @@
+{
+	"info": {
+		"_postman_id": "c3c81aa8-0dba-4f27-a7c4-8963e13be218",
+		"name": "OpenAV Orchestrator",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32668379"
+	},
+	"item": [
+		{
+			"name": "Get System State",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/api/systems/{{system}}/state",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"systems",
+						"{{system}}",
+						"state"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Clear System Cache",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/api/systems/{{system}}/cache",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"systems",
+						"{{system}}",
+						"cache"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update System State",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"power\": {\n        \"value\": false\n    }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/api/systems/{{system}}/state",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"systems",
+						"{{system}}",
+						"state"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Client Error",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "\"This is a test error\"",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{url}}/api/errors/client",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"errors",
+						"client"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "List Errors",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/api/errors",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"errors"
+					],
+					"query": [
+						{
+							"key": "system",
+							"value": "test",
+							"disabled": true
+						},
+						{
+							"key": "channel",
+							"value": "client",
+							"disabled": true
+						},
+						{
+							"key": "severity",
+							"value": "3",
+							"disabled": true
+						},
+						{
+							"key": "code",
+							"value": "WQ2r1U4gSX8A",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Clear Global Cache",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/api/cache",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"cache"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Version",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/api/version",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"api",
+						"version"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

@@ -227,12 +227,16 @@ $path = $path[0] ;
 // exit( 0 ) ;
 
 if( $method=="GET" &&
-	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/status$/', $path) ) {
-	route_function_if_authorized( "get_system_status" ) ;
+	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/state$/', $path) ) {
+	route_function_if_authorized( "get_system_state" ) ;
 }
 if( $method=="PUT" &&
-	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/status$/', $path) ) {
-	route_function_if_authorized( "update_system_status" ) ;
+	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/state$/', $path) ) {
+	route_function_if_authorized( "update_system_state" ) ;
+}
+if( $method=="DELETE" &&
+	preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}\/cache$/', $path) ) {
+	route_function_if_authorized( "clear_system_cache" ) ;
 }
 if( $method=="GET" &&
 	preg_match('/^version$/', $path) ) {
@@ -386,7 +390,7 @@ function route_function_if_authorized( $function_name ) {
 //        |___/            
 
 
-function get_system_status() {
+function get_system_state() {
 	global $path ;
 
 	$system = explode( "/", $path ) ;
@@ -444,25 +448,25 @@ function get_system_status() {
 				if( !is_valid_system_config($content) ) {
 					close_with_500( "system config is invalid" ) ;
 				}
-				process_system_config( $content ) ;
+				process_system_config( $content, ['system'=>$system] ) ;
 				file_put_contents( "/data/{$system}.json", $content ) ;
-				@unlink( "/data/{$system}.status.json" ) ;
-				@unlink( "/data/{$system}.status.json.lock" ) ;
+				@unlink( "/data/{$system}.state.json" ) ;
+				@unlink( "/data/{$system}.state.json.lock" ) ;
 			}
 	}
 
-	// we haven't refreshed this system's status yet
-	if( !file_exists("/data/{$system}.status.json") ) {
-		touch( "/data/{$system}.status.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_status", [$system] ) ;
+	// we haven't refreshed this system's state yet
+	if( !file_exists("/data/{$system}.state.json") ) {
+		touch( "/data/{$system}.state.json.lock" ) ;
+		run_cli_function( "cli_refresh_system_state", [$system] ) ;
 		close_with_204( "initializing" ) ;
 	}
 	// we've refreshed it and we need to keep it fresh
-	if( (time()-filemtime("/data/{$system}.status.json"))>60 ) { // 1 minute
+	if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
 		$refresh = false ;
-		if( file_exists("/data/{$system}.status.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.status.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system status refresh lock file older than 10 minutes for system: {$system}",
+		if( file_exists("/data/{$system}.state.json.lock") ) {
+			if( (time()-filemtime("/data/{$system}.state.json.lock"))>600 ) { // 10 minutes
+				(new error_())->add( "system state refresh lock file older than 10 minutes for system: {$system}",
 				                     "M2spq9100P3P",
 						             2,
 						             "backend" ) ;
@@ -473,18 +477,18 @@ function get_system_status() {
 		}
 	    
 	    if( $refresh ) {
-			touch( "/data/{$system}.status.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_status", [$system] ) ;
+			touch( "/data/{$system}.state.json.lock" ) ;
+			run_cli_function( "cli_refresh_system_state", [$system] ) ;
 		}
 	}
 
-	$system_status = json_decode( file_get_contents("/data/{$system}.status.json"), true ) ;
+	$system_state = json_decode( file_get_contents("/data/{$system}.state.json"), true ) ;
 
-	close_with_200( $system_status ) ;
+	close_with_200( $system_state ) ;
 }
 
 
-function update_system_status() {
+function update_system_state() {
 	global $path ;
 
 	$system = explode( "/", $path ) ;
@@ -526,18 +530,18 @@ function update_system_status() {
 		}
 	}
 
-	// we haven't refreshed this system's status yet
-	if( !file_exists("/data/{$system}.status.json") ) {
-		touch( "/data/{$system}.status.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_status", [$system] ) ;
+	// we haven't refreshed this system's state yet
+	if( !file_exists("/data/{$system}.state.json") ) {
+		touch( "/data/{$system}.state.json.lock" ) ;
+		run_cli_function( "cli_refresh_system_state", [$system] ) ;
 		close_with_204( "initializing" ) ;
 	}
 	// we've refreshed it and we need to keep it fresh
-	if( (time()-filemtime("/data/{$system}.status.json"))>60 ) { // 1 minute
+	if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
 		$refresh = false ;
-		if( file_exists("/data/{$system}.status.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.status.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system status refresh lock file older than 10 minutes for system: {$system}",
+		if( file_exists("/data/{$system}.state.json.lock") ) {
+			if( (time()-filemtime("/data/{$system}.state.json.lock"))>600 ) { // 10 minutes
+				(new error_())->add( "system state refresh lock file older than 10 minutes for system: {$system}",
 				                     "6RYeBYfVjW42",
 						             2,
 						             "backend" ) ;
@@ -548,30 +552,46 @@ function update_system_status() {
 		}
 	    
 	    if( $refresh ) {
-			touch( "/data/{$system}.status.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_status", [$system] ) ;
+			touch( "/data/{$system}.state.json.lock" ) ;
+			run_cli_function( "cli_refresh_system_state", [$system] ) ;
 		}
 	}
 
 	$system_config = json_decode( file_get_contents("/data/{$system}.json"), true ) ;
-	$system_status = json_decode( file_get_contents("/data/{$system}.status.json"), true ) ;
+	$system_state = json_decode( file_get_contents("/data/{$system}.state.json"), true ) ;
 	// we merge it with the desired update
 	$accumulated_microservice_sequences = [] ;
 	$error = null ;
-	merge_current_status_with_update( $system_config, $system_status, $update, $accumulated_microservice_sequences, $error ) ;
+	merge_current_state_with_update( $system_config, $system_state, $update, $accumulated_microservice_sequences, $error ) ;
 
 	if( $error!==null ) {
 		close_with_400( $error ) ;
 	}
 
-	file_put_contents( "/data/{$system}.status.json", json_encode($system_status), LOCK_EX ) ;
-	@unlink( "/data/{$system}.status.json.lock" ) ;
+	file_put_contents( "/data/{$system}.state.json", json_encode($system_state), LOCK_EX ) ;
+	@unlink( "/data/{$system}.state.json.lock" ) ;
 
-	$microservice_sequences_filename = "/data/{$system}.status.microservice_sequences." . md5( microtime() ) . ".json" ;
+	$microservice_sequences_filename = "/data/{$system}.state.microservice_sequences." . md5( microtime() ) . ".json" ;
 	file_put_contents( $microservice_sequences_filename, json_encode($accumulated_microservice_sequences) ) ;
 	run_cli_function( "cli_run_microservice_sequences", [$system, $microservice_sequences_filename] ) ;
 
-	close_with_200( $system_status ) ;
+	close_with_200( $system_state ) ;
+}
+
+
+function clear_system_cache() {
+	global $path ;
+
+	$system = explode( "/", $path ) ;
+	$system = $system[1] ;
+
+	if( !is_valid_system_name($system) ) { // this is also enforced at the routing level
+		close_with_400( "invalid system name: {$system}" ) ;
+	}
+
+	shell_exec( "rm /data/{$system}*" ) ; // kind of yucky but $system has been validated at this point
+
+	close_with_200( true ) ;
 }
 
 
@@ -629,7 +649,7 @@ function cli_refresh_system_config( $system ) {
 		return false ;
 	}
 
-	process_system_config( $content ) ;
+	process_system_config( $content, ['system'=>$system] ) ;
 
 	file_put_contents( "/data/{$system}.json", $content, LOCK_EX ) ;
 	@unlink( "/data/{$system}.json.lock" ) ;
@@ -638,25 +658,25 @@ function cli_refresh_system_config( $system ) {
 }
 
 
-function cli_refresh_system_status( $system ) {
+function cli_refresh_system_state( $system ) {
 	$system_config = [] ;
 
 	if( !file_exists("/data/{$system}.json") ) {
-		(new error_())->add( "config for system: {$system} doesn't exist at the time of status refresh",
+		(new error_())->add( "config for system: {$system} doesn't exist at the time of state refresh",
 			                 "B9X9cwA7ls4f",
 					         1,
 					         "backend" ) ;
-		@unlink( "/data/{$system}.status.json.lock" ) ;
+		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
 	$system_config = file_get_contents( "/data/{$system}.json" ) ;
 	$system_config = json_decode( $system_config, true ) ;
 	if( $system_config===null ) {
-		(new error_())->add( "config for system: {$system} doesn't parse at the time of status refresh",
+		(new error_())->add( "config for system: {$system} doesn't parse at the time of state refresh",
 			                 "4Ikj18m28kPf",
 					         1,
 					         "backend" ) ;
-		@unlink( "/data/{$system}.status.json.lock" ) ;
+		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
 
@@ -671,7 +691,7 @@ function cli_refresh_system_status( $system ) {
 	                             "1J6cDOU8FpXy",
 	                             1,
 	                             "backend" ) ;
-	        @unlink( "/data/{$system}.status.json.lock" ) ;
+	        @unlink( "/data/{$system}.state.json.lock" ) ;
 	        return false ;
 	    }
 	    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
@@ -681,7 +701,7 @@ function cli_refresh_system_status( $system ) {
 	                             "8IvN0L65xZGm",
 	                             1,
 	                             "backend" ) ;
-	        @unlink( "/data/{$system}.status.json.lock" ) ;
+	        @unlink( "/data/{$system}.state.json.lock" ) ;
 	        return false ;
 	    }
 		$microservices_missing = [] ;
@@ -696,27 +716,27 @@ function cli_refresh_system_status( $system ) {
 			                 	 "86G3OsE55Qr4",
 					         	 1,
 					         	 "backend" ) ;
-			@unlink( "/data/{$system}.status.json.lock" ) ;
+			@unlink( "/data/{$system}.state.json.lock" ) ;
 			return false ;
 		}
 	}
 
-	interpret_config_as_current_status( $system_config, $microservices_mapping ) ;
-	$system_status = $system_config ; // really just to disambiguate that it was transformed
+	interpret_config_as_current_state( $system_config, $microservices_mapping ) ;
+	$system_state = $system_config ; // really just to disambiguate that it was transformed
 
-	$system_status = json_encode( $system_status ) ;
+	$system_state = json_encode( $system_state ) ;
 
-	if( !file_exists("/data/{$system}.status.json") ||
-		!file_exists("/data/{$system}.status.json.lock") ||
-		(file_exists("/data/{$system}.status.json") &&
-		 file_exists("/data/{$system}.status.json.lock") &&
-		 filemtime("/data/{$system}.status.json")<=filemtime("/data/{$system}.status.json.lock")) ) {
-		file_put_contents( "/data/{$system}.status.json", $system_status, LOCK_EX ) ;
+	if( !file_exists("/data/{$system}.state.json") ||
+		!file_exists("/data/{$system}.state.json.lock") ||
+		(file_exists("/data/{$system}.state.json") &&
+		 file_exists("/data/{$system}.state.json.lock") &&
+		 filemtime("/data/{$system}.state.json")<=filemtime("/data/{$system}.state.json.lock")) ) {
+		file_put_contents( "/data/{$system}.state.json", $system_state, LOCK_EX ) ;
 	} else {
-		// likely, a status update arrived between the time we started our status update and now
+		// likely, a state update arrived between the time we started our state update and now
 		//   the update takes precedence so we abandon our efforts
 	}
-	@unlink( "/data/{$system}.status.json.lock" ) ;
+	@unlink( "/data/{$system}.state.json.lock" ) ;
 
 	return true ;
 }
@@ -724,7 +744,7 @@ function cli_refresh_system_status( $system ) {
 
 function cli_run_microservice_sequences( $system, $microservice_sequences_filename ) {
 	if( !file_exists($microservice_sequences_filename) ) {
-		(new error_())->add( "status update file: {$microservice_sequences_filename} doesn't exist",
+		(new error_())->add( "state update file: {$microservice_sequences_filename} doesn't exist",
 			                 "fN8P05A6F8St",
 					         1,
 					         "backend" ) ;
@@ -817,7 +837,7 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
 }
 
 
-function interpret_config_as_current_status( &$system_config, $microservices_mapping ) {
+function interpret_config_as_current_state( &$system_config, $microservices_mapping ) {
 	if( is_array($system_config) ) {
 		if( array_key_exists('get', $system_config) ) {
 			$results = run_microservice_sequence( $system_config['get'], $microservices_mapping, false ) ;
@@ -832,7 +852,7 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
                 $system_config = $results ;
 			} else if( gettype($system_config['get_process'])=="array" ) {
 				if( isset($system_config['get_process']['function_name']) ) {
-					require_once( "system_status_process_functions.php" ) ;
+					require_once( "system_state_process_functions.php" ) ;
 		    		if( !function_exists($system_config['get_process']['function_name']) ) {
 		    			(new error_())->add( "get_process function: {$system_config['get_process']['function_name']} is not defined",
 				                             "ORji83l6j6Xt",
@@ -858,7 +878,7 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 					$system_config = true_if_exact_match( $results, $system_config['get_process'] ) ;
 				}
 			} else if( gettype($system_config['get_process'])=="string" ) {
-				require_once( "system_status_process_functions.php" ) ;
+				require_once( "system_state_process_functions.php" ) ;
 
 				$get_process_function_name = $system_config['get_process'] ;
 				$get_process_function_name = explode( "(", $get_process_function_name ) ;
@@ -901,7 +921,7 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 		} else {
 			$keys = array_keys( $system_config ) ;
 			foreach( $keys as $key ) {
-				interpret_config_as_current_status( $system_config[$key], $microservices_mapping ) ;
+				interpret_config_as_current_state( $system_config[$key], $microservices_mapping ) ;
 			}
 		}
 	} else {
@@ -910,16 +930,16 @@ function interpret_config_as_current_status( &$system_config, $microservices_map
 }
 
 
-function merge_current_status_with_update( $system_config, &$system_status, $update, &$accumulated_microservice_sequences, &$error ) {
+function merge_current_state_with_update( $system_config, &$system_state, $update, &$accumulated_microservice_sequences, &$error ) {
 	if( is_array($update) ) {
 		if( is_array($system_config) &&
-			is_array($system_status) ) {
+			is_array($system_state) ) {
 			foreach( $update as $update_key=>$update_value ) {
 				if( isset($system_config[$update_key]) &&
-					isset($system_status[$update_key]) ) {
-					return merge_current_status_with_update( $system_config[$update_key], $system_status[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
+					isset($system_state[$update_key]) ) {
+					return merge_current_state_with_update( $system_config[$update_key], $system_state[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
 				} else {
-					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system status:\n" . json_encode($system_status, JSON_PRETTY_PRINT),
+					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
 					                 	 "7ND4dL6XCmus",
 							         	 2,
 							         	 "backend" ) ;
@@ -927,7 +947,7 @@ function merge_current_status_with_update( $system_config, &$system_status, $upd
 				}
 			}
 		} else {
-			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system status:\n" . json_encode($system_status, JSON_PRETTY_PRINT),
+			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
 			                 	 "xetOz4m4J0t2",
 					         	 2,
 					         	 "backend" ) ;
@@ -938,7 +958,7 @@ function merge_current_status_with_update( $system_config, &$system_status, $upd
 
 			$variables = [] ;
 		    if( isset($system_config['set_process']) ) {
-		    	require_once( "system_status_process_functions.php" ) ;
+		    	require_once( "system_state_process_functions.php" ) ;
 		    	if( gettype($system_config['set_process'])=="string" ) {
 		    		if( !function_exists($system_config['set_process']) ) {
 		    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
@@ -997,7 +1017,7 @@ function merge_current_status_with_update( $system_config, &$system_status, $upd
 			    }
 		    }
 		    if( count($variables)>0 ) {
-				$matchess = array() ;
+				$matchess = [] ;
 
 				$set_as_string = json_encode( $system_config['set'] ) ;
 				preg_match_all( '/\$[a-zA-Z]{1,}[a-zA-Z0-9-_]{0,}/', $set_as_string, $matchess ) ;
@@ -1028,7 +1048,7 @@ function merge_current_status_with_update( $system_config, &$system_status, $upd
 			}
 
 			$accumulated_microservice_sequences[] = $system_config['set'] ;
-			$system_status = $update ;
+			$system_state = $update ;
 		} else {
 			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\nis trying to set a variable that is not settable in system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT),
 			                 	 "I5h05S2P7yQX",
@@ -1408,6 +1428,23 @@ function create_client_error() {
 
 
 
+//   ____           _          
+//  / ___|__ _  ___| |__   ___ 
+// | |   / _` |/ __| '_ \ / _ \
+// | |__| (_| | (__| | | |  __/
+//  \____\__,_|\___|_| |_|\___|
+                             
+
+function clear_cache() {
+	shell_exec( "rm /data/*" ) ; // kind of yucky but harmless
+	$memcached = new memcached_() ;
+	$memcached->flush() ;
+	close_with_200( true ) ;
+}
+
+
+
+
 //  __  __             _ _             _             
 // |  \/  | ___  _ __ (_) |_ ___  _ __(_)_ __   __ _ 
 // | |\/| |/ _ \| '_ \| | __/ _ \| '__| | '_ \ / _` |
@@ -1551,14 +1588,30 @@ function close_with_500( $message ) {
  //  \___/ \__|_|_|_|\__|_|\___||___/
 
 
-function process_system_config( &$content ) {
-	// the hardware section of a config is irrelevant to operation, and shouldn't be exposed
+function process_system_config( &$content, $variables ) {
+	// vestige from earlier implementation: the hardware section of a config is irrelevant to operation, and shouldn't be exposed
 	$content = json_decode( $content, true ) ;
 	if( isset($content[array_keys($content)[0]]['hardware']) ) {
 		unset( $content[array_keys($content)[0]]['hardware'] ) ;
 	}
 
 	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
+
+	$matchess = [] ;
+	preg_match_all( '/\$\{[a-zA-Z]{1,}[a-zA-Z0-9-_]{0,}\}/', $content, $matchess ) ;
+	foreach( $matchess as $matches ) {
+		foreach( $matches as $match ) {
+			$match_no_wrapper = preg_replace( '/[\{\$\}]/', "", $match ) ;
+			if( array_key_exists($match_no_wrapper, $variables) ) {
+				$content = str_replace( $match, $variables[$match_no_wrapper], $content ) ;
+			} else {
+				(new error_())->add( "global variable: {$match} not known in:\n" . var_export( $variables, true ),
+			                 	     "MfA63ot4B7Cp",
+					         	     1,
+					         	     "backend" ) ;
+			}
+		}
+	}
 
 	// nothing to return, passed by reference
 }
