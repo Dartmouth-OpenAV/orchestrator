@@ -1,5 +1,17 @@
 <?php
 
+//  ___            _           _           
+// |_ _|_ __   ___| |_   _  __| | ___  ___ 
+//  | || '_ \ / __| | | | |/ _` |/ _ \/ __|
+//  | || | | | (__| | |_| | (_| |  __/\__ \
+// |___|_| |_|\___|_|\__,_|\__,_|\___||___/
+//
+
+
+require_once( "utilities.php" ) ;
+
+
+
 
 class error_ {
 
@@ -19,7 +31,7 @@ class error_ {
 	function list( $system=null, $code=null, $severity=null, $channel=null ) {
 		$errors = [] ;
 		if( file_exists($this->error_log_file) ) {
-			$possible_new_errors = json_decode( file_get_contents($this->error_log_file), true ) ;
+			$possible_new_errors = json_decode( safe_file_get_contents($this->error_log_file), true ) ;
 			if( is_array($possible_new_errors) ) {
 				$errors = $possible_new_errors ;
 			}
@@ -41,7 +53,12 @@ class error_ {
 	}
 
 
-	function add( $message, $code, $severity, $channel, $system=null ) {
+	function add( $message, $code, $severity, $channel, $tolerance=0, $system=null ) { // tolerance is for the last hour
+		
+		if( $tolerance>0 ) {
+			$error_hash = md5( $code . $severity . $channel . $system ) ; // the message isn't included as it might contain fluctuating details
+			$
+
 		// trace
 	    $e = new Exception() ;
 	    $trace = explode( "\n", $e->getTraceAsString() ) ;
@@ -61,36 +78,20 @@ class error_ {
 	    	'system'=>$system
 	    ] ;
 
-	    // we're going to want to do a lot better than this eventually, especially for busy systems
-	    $safety_counter = 10 ; // sleep 0.1 so 1 second max
-	    $logged = false ;
-	    while( $safety_counter>0 &&
-	    	   $logged!==true ) {
-	    	if( !file_exists("{$this->error_log_file}.lock") ||
-	    		(time()-filemtime("{$this->error_log_file}.lock"))>300 ) { // if the lock file is older than 5 minutes, we bulldoze
-	    		touch( "{$this->error_log_file}.lock" ) ;
+		$errors = [] ;
+		if( file_exists($this->error_log_file) ) {
+			$possible_new_errors = json_decode( safe_file_get_contents($this->error_log_file), true ) ;
+			if( is_array($possible_new_errors) ) {
+				$errors = $possible_new_errors ;
+			}
+		}
+		$errors[] = $new_error ;
 
-	    		$errors = [] ;
-	    		if( file_exists($this->error_log_file) ) {
-	    			$possible_new_errors = json_decode( file_get_contents($this->error_log_file), true ) ;
-	    			if( is_array($possible_new_errors) ) {
-	    				$errors = $possible_new_errors ;
-	    			}
-	    		}
-	    		$errors[] = $new_error ;
+		$this->remove_obsolete( $errors ) ;
+		
+		safe_file_put_contents( $this->error_log_file, json_encode($errors) ) ;
 
-	    		$this->remove_obsolete( $errors ) ;
-	    		
-	    		file_put_contents( $this->error_log_file, json_encode($errors) ) ;
-
-	    		$logged = true ;
-
-	    		unlink( "{$this->error_log_file}.lock" ) ;
-	    	} else {
-	    		sleep( 0.1 ) ; // safety counter 10 so 1 second max
-	    		$safety_counter-- ;
-	    	}
-	    }
+		$logged = true ;
 	}
 
 

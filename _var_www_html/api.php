@@ -37,9 +37,11 @@ if( php_sapi_name()!="cli" ) {
 // |___|_| |_|\___|_|\__,_|\__,_|\___||___/
 //
 
+
 require_once( "include/error.php" ) ;
 require_once( "include/github.php" ) ;
 require_once( "include/memcached.php" ) ;
+require_once( "include/utilities.php" ) ;
 
 
 
@@ -268,7 +270,7 @@ function route_function_if_authorized( $function_name ) {
 		close_with_500( "server misconfiguration" ) ;
 		exit( 1 ) ; // for good measure
 	}
-	$authorization = file_get_contents( "/authorization.json" ) ;
+	$authorization = safe_file_get_contents( "/authorization.json" ) ;
 
 	if( trim($authorization)=="*" ) {
 		$authorized = true ;
@@ -444,12 +446,12 @@ function get_system_state() {
 				$refresh = true ;
 			}
 			if( $refresh ) {
-				$content = file_get_contents( "/system_configurations/{$system}.json" ) ;
+				$content = safe_file_get_contents( "/system_configurations/{$system}.json" ) ;
 				if( !is_valid_system_config($content) ) {
 					close_with_500( "system config is invalid" ) ;
 				}
 				process_system_config( $content, ['system'=>$system] ) ;
-				file_put_contents( "/data/{$system}.json", $content ) ;
+				safe_file_put_contents( "/data/{$system}.json", $content ) ;
 				@unlink( "/data/{$system}.state.json" ) ;
 				@unlink( "/data/{$system}.state.json.lock" ) ;
 			}
@@ -482,7 +484,7 @@ function get_system_state() {
 		}
 	}
 
-	$system_state = json_decode( file_get_contents("/data/{$system}.state.json"), true ) ;
+	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
 
 	close_with_200( $system_state ) ;
 }
@@ -557,8 +559,8 @@ function update_system_state() {
 		}
 	}
 
-	$system_config = json_decode( file_get_contents("/data/{$system}.json"), true ) ;
-	$system_state = json_decode( file_get_contents("/data/{$system}.state.json"), true ) ;
+	$system_config = json_decode( safe_file_get_contents("/data/{$system}.json"), true ) ;
+	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
 	// we merge it with the desired update
 	$accumulated_microservice_sequences = [] ;
 	$error = null ;
@@ -568,11 +570,11 @@ function update_system_state() {
 		close_with_400( $error ) ;
 	}
 
-	file_put_contents( "/data/{$system}.state.json", json_encode($system_state), LOCK_EX ) ;
+	safe_file_put_contents( "/data/{$system}.state.json", json_encode($system_state) ) ;
 	@unlink( "/data/{$system}.state.json.lock" ) ;
 
 	$microservice_sequences_filename = "/data/{$system}.state.microservice_sequences." . md5( microtime() ) . ".json" ;
-	file_put_contents( $microservice_sequences_filename, json_encode($accumulated_microservice_sequences) ) ;
+	safe_file_put_contents( $microservice_sequences_filename, json_encode($accumulated_microservice_sequences) ) ;
 	run_cli_function( "cli_run_microservice_sequences", [$system, $microservice_sequences_filename] ) ;
 
 	close_with_200( $system_state ) ;
@@ -600,7 +602,7 @@ function cli_refresh_system_config( $system ) {
 	if( getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
 		// if we made it here, we've already verified that /system_configurations exists
 		if( file_exists("/system_configurations/{$system}.json") ) {
-			$content = file_get_contents( "/system_configurations/{$system}.json" ) ;
+			$content = safe_file_get_contents( "/system_configurations/{$system}.json" ) ;
 		} // else it'll get picked up as an error later
 	} else {
 		$github_credentials = false ;
@@ -651,7 +653,7 @@ function cli_refresh_system_config( $system ) {
 
 	process_system_config( $content, ['system'=>$system] ) ;
 
-	file_put_contents( "/data/{$system}.json", $content, LOCK_EX ) ;
+	safe_file_put_contents( "/data/{$system}.json", $content ) ;
 	@unlink( "/data/{$system}.json.lock" ) ;
 
 	return true ;
@@ -669,7 +671,7 @@ function cli_refresh_system_state( $system ) {
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
-	$system_config = file_get_contents( "/data/{$system}.json" ) ;
+	$system_config = safe_file_get_contents( "/data/{$system}.json" ) ;
 	$system_config = json_decode( $system_config, true ) ;
 	if( $system_config===null ) {
 		(new error_())->add( "config for system: {$system} doesn't parse at the time of state refresh",
@@ -694,7 +696,7 @@ function cli_refresh_system_state( $system ) {
 	        @unlink( "/data/{$system}.state.json.lock" ) ;
 	        return false ;
 	    }
-	    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
+	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
 	    if( $microservices_mapping===null ||
 	        !is_associative_array($microservices_mapping) ) {
 	        (new error_())->add( "invalid known microservices file",
@@ -731,7 +733,7 @@ function cli_refresh_system_state( $system ) {
 		(file_exists("/data/{$system}.state.json") &&
 		 file_exists("/data/{$system}.state.json.lock") &&
 		 filemtime("/data/{$system}.state.json")<=filemtime("/data/{$system}.state.json.lock")) ) {
-		file_put_contents( "/data/{$system}.state.json", $system_state, LOCK_EX ) ;
+		safe_file_put_contents( "/data/{$system}.state.json", $system_state ) ;
 	} else {
 		// likely, a state update arrived between the time we started our state update and now
 		//   the update takes precedence so we abandon our efforts
@@ -750,7 +752,7 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 					         "backend" ) ;
 		return false ;
 	}
-	$microservice_sequences = file_get_contents( $microservice_sequences_filename ) ;
+	$microservice_sequences = safe_file_get_contents( $microservice_sequences_filename ) ;
 	$microservice_sequences = json_decode( $microservice_sequences, true ) ;
 	if( $microservice_sequences_filename===null ) {
 		(new error_())->add( "microservice sequences in file: {$microservice_sequences_filename} doesn't parse",
@@ -771,7 +773,7 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 	                             "backend" ) ;
 	        return false ;
 	    }
-	    $microservices_mapping = json_decode( file_get_contents("/microservices.json"), true ) ;
+	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
 	    if( $microservices_mapping===null ||
 	        !is_associative_array($microservices_mapping) ) {
 	        (new error_())->add( "invalid known microservices file",
@@ -1455,7 +1457,7 @@ function clear_cache() {
 function get_version() {
 	$version = "unknown" ;
 	if( file_exists("/var/version") ) {
-		$version = file_get_contents( "/var/version" ) ;
+		$version = safe_file_get_contents( "/var/version" ) ;
 	}
 
 	close_with_200( $version ) ;
@@ -1634,7 +1636,7 @@ function resolve_dns( $fqdn ) {
 			} else {
 				// nothing in memory, let's try persistent storage to potentially survive a reboot
 				if( file_exists($cache_filename) ) {
-					$record = json_decode( file_get_contents($cache_filename), true ) ;
+					$record = json_decode( safe_file_get_contents($cache_filename), true ) ;
 					if( is_string($record) ) {
 						// ok! we can commit this to the memory cache now for next time
 						$memcached->store( $cache_memcache_key, $record, 0 ) ;
@@ -1644,7 +1646,7 @@ function resolve_dns( $fqdn ) {
 					// well then, I guess we'll do a DNS lookup
 					$dns_result = gethostbyname( $fqdn ) ;
 					if( $dns_result!=$fqdn ) { // we cache only if lookup was successful
-						file_put_contents( $cache_filename, json_encode($dns_result) ) ;
+						safe_file_put_contents( $cache_filename, json_encode($dns_result) ) ;
 						$memcached->store( $cache_memcache_key, $record, 0 ) ;
 					}
 					return $dns_result ;

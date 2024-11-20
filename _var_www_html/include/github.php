@@ -8,7 +8,9 @@
 // |___|_| |_|\___|_|\__,_|\__,_|\___||___/
 //
 
+
 require_once( "error.php" ) ;
+require_once( "utitilies.php" ) ;
 
 
 
@@ -57,7 +59,7 @@ class github_ {
 
 		if( $force_refresh===false &&
 			file_exists($token_file) ) {
-			$data = file_get_contents( $token_file ) ;
+			$data = safe_file_get_contents( $token_file ) ;
 			$data = json_decode( $data, true ) ;
 			// print_r( $data['expires_at'] ) ;
 			// print_r( (strtotime($data['expires_at'])-time()) ) ;
@@ -105,7 +107,7 @@ class github_ {
 			$response_code==200 ) { // Github responds with 201, but just in case
 			$response = json_decode( $response, true ) ;
 			if( isset($response['token']) ) {
-				file_put_contents( $token_file, json_encode($response) ) ;
+				safe_file_put_contents( $token_file, json_encode($response) ) ;
 				return $response['token'] ;
 			}
 		}
