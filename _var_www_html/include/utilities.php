@@ -45,4 +45,5 @@ function safe_file_put_contents( $filename, $data ) {
     return $bytes_written;
 }
 
+
 ?>

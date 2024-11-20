@@ -18,12 +18,14 @@ class error_ {
 
     // variable declaration
     private $error_log_file ;
+    private $error_tolerance_cache_dir ;
     private $error_retention_hours ;
 
 
     // constructor
     function __construct() {
 		$this->error_log_file = "/data/errors.json" ;
+		$this->error_tolerance_cache_dir = "/data" ;
 		$this->error_retention_hours = 24 ;
 	}
 
@@ -57,7 +59,37 @@ class error_ {
 		
 		if( $tolerance>0 ) {
 			$error_hash = md5( $code . $severity . $channel . $system ) ; // the message isn't included as it might contain fluctuating details
-			$
+			$tolerance_filename = "{$this->error_tolerance_cache_dir}/error_tolerance.{$error_hash}.json" ;
+			$tolerance_data = [] ;
+			if( file_exists($tolerance_filename) ) {
+				$tolerance_data = json_decode( safe_file_get_contents($tolerance_filename), true ) ;
+				if( !is_array($tolerance_data) ) {
+					$tolerance_data = [] ;
+				}
+			}
+
+			// cleaning up obsolete entries
+			$now = time() ;
+			$indices_to_remove = [] ;
+			for( $i=0 ; $i<count($tolerance_data) ; $i++ ) {
+				if( ($now-$tolerance_data[$i])>3600 ) {
+					$indices_to_remove[] = $i ;
+				}
+			}
+			foreach( $indices_to_remove as $index_to_remove ) {
+				unset( $tolerance_data[$index_to_remove] ) ;
+			}
+			$tolerance_data = array_values( $tolerance_data ) ;
+
+			// adding new one
+			$tolerance_data[] = $now ;
+			safe_file_put_contents( $tolerance_filename, json_encode($tolerance_data) ) ;
+
+			if( count($tolerance_data)<=$tolerance ) {
+				// occurred within tolerance, no need to actually do anything
+				return null ;
+			}
+		}
 
 		// trace
 	    $e = new Exception() ;
@@ -90,8 +122,6 @@ class error_ {
 		$this->remove_obsolete( $errors ) ;
 		
 		safe_file_put_contents( $this->error_log_file, json_encode($errors) ) ;
-
-		$logged = true ;
 	}
 
 

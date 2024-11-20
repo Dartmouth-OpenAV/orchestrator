@@ -10,7 +10,7 @@
 
 
 require_once( "error.php" ) ;
-require_once( "utitilies.php" ) ;
+require_once( "utilities.php" ) ;
 
 
 
