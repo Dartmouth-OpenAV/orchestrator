@@ -806,7 +806,7 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
 						$microservice_tag  = explode( "/", $microservice_tag ) ;
 						$microservice_tag  = $microservice_tag[0] ;
                         if( $microservice_tag=="current" ) {
-                            $microservice_tag = getenv()['VERSION'] ;
+                            $microservice_tag = get_version( true ) ;
                         }
 						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
 						if( !in_array($microservice_key, $microservice_list) ) {
@@ -822,7 +822,7 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
 						$microservice_tag  = explode( "/", $microservice_tag ) ;
 						$microservice_tag  = $microservice_tag[0] ;
                         if( $microservice_tag=="current" ) {
-                            $microservice_tag = getenv()['VERSION'] ;
+                            $microservice_tag = get_version( true ) ;
                         }
 						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
 						if( !in_array($microservice_key, $microservice_list) ) {
@@ -1224,7 +1224,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
         }
 
         if( $tag=="current" ) {
-            $tag = getenv()['VERSION'] ;
+            $tag = get_version( true ) ;
         }
 
         if( $microservices_mapping!==null &&
@@ -1453,10 +1453,14 @@ function clear_cache() {
 // |_|  |_|\___/|_| |_|_|\__\___/|_|  |_|_| |_|\__, |
 //                                             |___/ 
 
-function get_version() {
+function get_version( $return_only=false ) {
 	$version = "unknown" ;
 	if( file_exists("/var/version") ) {
 		$version = safe_file_get_contents( "/var/version" ) ;
+	}
+
+	if( $return_only ) {
+		return $version ;
 	}
 
 	close_with_200( $version ) ;

@@ -22,7 +22,8 @@
 						"{{system}}",
 						"state"
 					]
-				}
+				},
+				"description": "Will return the state of a system, which is the interpreted configuration of a system."
 			},
 			"response": []
 		},
@@ -42,7 +43,8 @@
 						"{{system}}",
 						"cache"
 					]
-				}
+				},
+				"description": "Removes caches which are specific to a system. This does not clear cached DNS entries for that system."
 			},
 			"response": []
 		},
@@ -53,7 +55,7 @@
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n    \"power\": {\n        \"value\": false\n    }\n}",
+					"raw": "{\n    \"power\": {\n        \"value\": true\n    }\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -71,7 +73,8 @@
 						"{{system}}",
 						"state"
 					]
-				}
+				},
+				"description": "Updates the state of a system. Send only the parts of the JSON data structure that needs to be updated."
 			},
 			"response": []
 		},
@@ -99,7 +102,8 @@
 						"errors",
 						"client"
 					]
-				}
+				},
+				"description": "Creates a specific error that is a client error. The Orchestrator gathers errors from multipled sources, and dispatches them to various places integrated with it. Sometime it's useful for a Client to leverage this central gathering point to make its own errors percolate through the same channels. For example, if a system control website is setup for users, and the browser's Javascript has an error, it can use this to report on it."
 			},
 			"response": []
 		},
@@ -139,7 +143,8 @@
 							"disabled": true
 						}
 					]
-				}
+				},
+				"description": "Returns a list of errors from the past 24 hours. Errors are obsoleted beyond that."
 			},
 			"response": []
 		},
@@ -157,7 +162,8 @@
 						"api",
 						"cache"
 					]
-				}
+				},
+				"description": "Remove any and all cached state, DNS, configurations, memory cache, et cetera. Useful when making changes to an evolving system configuration, to not have to wait before testing them."
 			},
 			"response": []
 		},
@@ -175,7 +181,8 @@
 						"api",
 						"version"
 					]
-				}
+				},
+				"description": "Returns the Orchestrator's version. It's set when instantiating the orchestrator's container, passed as the `VERSION` environment variable."
 			},
 			"response": []
 		}
