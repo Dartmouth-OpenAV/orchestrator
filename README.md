@@ -7,7 +7,57 @@ For alternative licensing options, please contact the Dartmouth College OpenAV p
 
 # Orchestrator
 
-The orchestrator takes a system configuration and interprets it into a state. It does so by coordinating communication with all the [microservices](https://github.com/orgs/Dartmouth-OpenAV/repositories?q=microservice) refered to in the system configuration. The orchestrator's role is to maintain the state and prodive it to the various agents interacting with it. For example, one such agent could be a website made available on a tablet for people to control the state of a room's AV equipment. Another could be a backend script in charge of turning off equipment after hours. All these integrations end up taking to the orchestrator to get and update the state of a system.
+The orchestrator takes a *system configuration* and interprets it into a *state*. It does so by coordinating communication with all the [microservices](https://github.com/orgs/Dartmouth-OpenAV/repositories?q=microservice) refered to in the *system configuration*. The orchestrator's role is to maintain the *state* and provide it to the various agents interacting with it. For example, one such agent could be a website made available on a tablet for people to control the *state* of a room's AV equipment. Another could be a backend script in charge of turning off equipment after hours. All these integrations end up taking to the orchestrator to get or update the *state* of a system.
+
+Here is a simple example of a *system configuration*:
+
+```
+{
+    "name": "Room 123",
+    "power": {
+        "value": {
+            "set": [
+                {
+                    "driver": "ghcr.io/dartmouth-openav/microservice-sony-fpd:current/mytv.fqdn.edu/power",
+                    "method": "PUT",
+                    "body": "\"$on_or_off\"",
+                    "headers": ["content-type: application/json"]
+                }
+            ],
+            "set_process": {
+                "true" : {"on_or_off": "on" },
+                "false": {"on_or_off": "off"}
+            },
+            "get": [
+                "ghcr.io/dartmouth-openav/microservice-sony-fpd:current/mytv.fqdn.edu/power"
+            ],
+            "get_process": ["on"]
+        }
+    }
+}
+```
+
+Here you can see a JSON hierachy, the orchestrator is agnostic to it so you can devise you own structures to be maintained by the orchestrator. One element stands out though: `power.value`, instead of containing a value like `name`, it contains instructions to get that value from a connected Sony TV. These instuctions also define what to do to that Sony TV is the value is updated. These instructions can be more complex, and the main point here is only to show the relation between a *configuration* and a *state*, indeed the resulting *state* from this *configuration* would be (if the TV was off):
+
+```
+{
+    "name": "Room 123",
+    "power": false
+}
+```
+
+This would be retrieved with the endpoint: `GET /api/systems/{{system}}/state`
+
+And if you wanted to update the state to turn the TV on, you would use the endpoint: `PUT /api/systems/{{system}}/state` with the body:
+
+
+```
+{
+    "power": true
+}
+```
+
+Here you only want to pass the parts of the hierarchy which need to be updated, hence why `name` is missing. But the data structure which represents the *configuration*, the *state*, and an update to the *state* always has the same hierarchy.
 
 
 # API
