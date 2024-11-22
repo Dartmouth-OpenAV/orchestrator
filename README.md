@@ -57,7 +57,7 @@ And if you wanted to update the state to turn the TV on, you would use the endpo
 }
 ```
 
-Here you only want to pass the parts of the hierarchy which need to be updated, hence why `name` is missing. But the data structure which represents the *configuration*, the *state*, and an update to the *state* always follows the same hierarchy.
+Here you only want to pass the parts of the hierarchy which need to be updated, hence why `name` is missing. But the data structures which represents the *configuration*, the *state*, and an update to the *state* always follow the same hierarchy.
 
 
 # API
