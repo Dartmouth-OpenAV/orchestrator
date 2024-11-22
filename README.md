@@ -37,7 +37,7 @@ Here is a simple example of a *system configuration*:
 }
 ```
 
-Here you can see a JSON hierachy, the orchestrator is agnostic to it so you can devise you own structures to be maintained by the orchestrator. One element stands out though: `power.value`, instead of containing a value like `name`, it contains instructions to get that value from a connected Sony TV. These instuctions also define what to do to that Sony TV is the value is updated. These instructions can be more complex, and the main point here is only to show the relation between a *configuration* and a *state*, indeed the resulting *state* from this *configuration* would be (if the TV was off):
+Here you can see a JSON hierachy, the orchestrator is agnostic to it so you can devise you own structures to be maintained by the orchestrator. One element stands out though: `power.value`, instead of containing a value like `name`, it contains instructions to get that value from a connected Sony TV. These instuctions also define what to do to that Sony TV is the value is updated. They can be more complex, and the main point here is only to show the relation between a *configuration* and a *state*, indeed the resulting *state* from this *configuration* would be (if the TV was off):
 
 ```
 {
@@ -57,7 +57,7 @@ And if you wanted to update the state to turn the TV on, you would use the endpo
 }
 ```
 
-Here you only want to pass the parts of the hierarchy which need to be updated, hence why `name` is missing. But the data structure which represents the *configuration*, the *state*, and an update to the *state* always has the same hierarchy.
+Here you only want to pass the parts of the hierarchy which need to be updated, hence why `name` is missing. But the data structure which represents the *configuration*, the *state*, and an update to the *state* always follows the same hierarchy.
 
 
 # API
