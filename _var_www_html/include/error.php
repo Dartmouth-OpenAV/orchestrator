@@ -30,7 +30,7 @@ class error_ {
 	}
 
 
-	function list( $system=null, $code=null, $severity=null, $channel=null ) {
+	function list( $code=null, $severity=null, $tags=null, $source=null, $system=null  ) {
 		$errors = [] ;
 		if( file_exists($this->error_log_file) ) {
 			$possible_new_errors = json_decode( safe_file_get_contents($this->error_log_file), true ) ;
@@ -43,11 +43,29 @@ class error_ {
 
 		$errors_kept = [] ;
 		foreach( $errors as $error ) {
-			if( ($system===null || ($system!==null && $system==$error['system'])) &&
-				($code===null || ($code!==null && $code==$error['code'])) &&
+			if( ($code===null || ($code!==null && $code==$error['code'])) &&
 				($severity===null || ($severity!==null && $severity==$error['severity'])) &&
-				($channel===null || ($channel!==null && $channel==$error['channel'])) ) {
-				$errors_kept[] = $error ;
+				($source===null || ($source!==null && $source==$error['source'])) &&
+				($system===null || ($system!==null && $system==$error['system'])) ) {
+				// tags is a little more involved
+				$tags_match = true ;
+				if( $tags!==null ) {
+					if( is_string($tags) ) {
+						$tags = [$tags] ;
+					} else if( !is_array($tags) ) {
+						$tags = [] ;
+					}
+				}
+				foreach( $tags as $tag ) {
+					if( !in_array($tag, $error['tags']) ) {
+						$tags_match = false ;
+						break ;
+					}
+				}
+
+				if( $tags_match ) {
+					$errors_kept[] = $error ;
+				}
 			}
 		}
 
@@ -55,10 +73,20 @@ class error_ {
 	}
 
 
-	function add( $message, $code, $severity, $channel, $tolerance=0, $system=null ) { // tolerance is for the last hour
+	function add( $message, $code, $severity, $tags=[], $source=null, $system=null, $tolerance=0 ) { // tolerance is count over last hour
+		if( !is_array($tags) ) {
+			// trying to be nice
+			if( is_string($tags) ) {
+				$tags = [$tags] ;
+			} else {
+				$tags = [] ;
+			}
+		} else {
+			sort( $tags ) ;
+		}
 		
 		if( $tolerance>0 ) {
-			$error_hash = md5( $code . $severity . $channel . $system ) ; // the message isn't included as it might contain fluctuating details
+			$error_hash = md5( $code . $severity . implode("|", $tags) . $source . $system ) ; // the message isn't included as it might contain fluctuating details
 			$tolerance_filename = "{$this->error_tolerance_cache_dir}/error_tolerance.{$error_hash}.json" ;
 			$tolerance_data = [] ;
 			if( file_exists($tolerance_filename) ) {
@@ -106,7 +134,8 @@ class error_ {
 	    	'code'=>$code,
 	    	'trace'=>$trace,
 	    	'severity'=>$severity,
-	    	'channel'=>$channel,
+	    	'tags'=>$tags,
+	    	'source'=>$source,
 	    	'system'=>$system
 	    ] ;
 

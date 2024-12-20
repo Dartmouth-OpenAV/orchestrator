@@ -1406,10 +1406,33 @@ function is_fresh_device( $fqdn ) {
 function create_client_error() {
 	$data = get_request_body() ;
 
-	if( !is_string($data) ||
-		strlen(trim($data))==0 ) {
-		close_with_400( "Client error message needed as a string in the request body" ) ;
+	if( $data===false ||
+		!is_array($data) ||
+		!isset($data['message']) ) {
+		close_with_400( "Client error message needed in request body. Example request body:
+			{
+				\"message\":\"error occured\",
+				\"code\":\"dTp42810boGa\", # optional, random 12 char string, must satisfy /^[A-Za-z0-9]{12}$/
+				\"severity\":2 # optional in [1,3], 1 being highest severity
+			}" ) ;
 	}
+	$code = "WQ2r1U4gSX8A" ; // default for client errors
+	if( isset($data['code']) ) {
+		if( !preg_match('/^[A-Za-z0-9]{12}$/', $data['code']) ) {
+			close_with_400( "error code must satisfy /^[A-Za-z0-9]{12}$/" ) ;
+		}
+		$code = $data['code'] ;
+	}
+	$severity = 3 ; // default for client errors
+	if( isset($data['severity']) ) {
+		if( !is_int($data['severity']) ||
+			$data['severity']<1 ||
+			$data['severity']>3 ) {
+			close_with_400( "error severity must be in [1,3], 1 being highest severity" ) ;
+		}
+		$severity = $data['severity'] ;
+	}
+
 
 	$client_ip = $_SERVER['REMOTE_ADDR'] ;
 	if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
@@ -1417,11 +1440,12 @@ function create_client_error() {
 	}
 	$client_dns = resolve_dns( $client_ip ) ;
 	$client_user_agent = $_SERVER['HTTP_USER_AGENT'] ;
-
+	
 	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data}",
-		                 "WQ2r1U4gSX8A",
-        				 3,
-				         "client" ) ;
+		                 $code,
+        				 $severity,
+				         ["client"],
+				         $client_dns ) ;
 
 	close_with_200( "ok" ) ;
 }
@@ -1468,14 +1492,6 @@ function get_version( $return_only=false ) {
 
 
 function list_errors() {	
-	$system = null ;
-	if( isset($_GET['system']) ) {
-		if( !is_valid_system_name($_GET['system']) ) {
-			close_with_400( "invalid system name: {$system}" ) ;
-		}
-		$system = $_GET['system'] ;
-	}
-
 	$code = null ;
 	if( isset($_GET['code']) ) {
 		$code = $_GET['code'] ;
@@ -1489,13 +1505,26 @@ function list_errors() {
 		$severity = (int)$_GET['severity'] ;
 	}
 
-	$channel = null ;
-	if( isset($_GET['channel']) ) {
-		$channel = $_GET['channel'] ;
+	$tags = null ;
+	if( isset($_GET['tags']) ) {
+		$tags = explode( ",", $_GET['tags'] ) ;
 	}
-	
 
-	close_with_200( (new error_())->list($system, $code, $severity, $channel) ) ;
+	$source = null ;
+	if( isset($_GET['source']) ) {
+		$source = $_GET['source'] ;
+	}
+
+	$system = null ;
+	if( isset($_GET['system']) ) {
+		if( !is_valid_system_name($_GET['system']) ) {
+			close_with_400( "invalid system name: {$system}" ) ;
+		}
+		$system = $_GET['system'] ;
+	}
+
+
+	close_with_200( (new error_())->list($code, $severity, $tags, $source, $system) ) ;
 }
 
 
