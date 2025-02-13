@@ -265,6 +265,19 @@ function route_function_if_authorized( $function_name ) {
 
 	$authorized = false ;
 
+	if( preg_match('/^systems\/[0-9a-zA-Z\-\_]{1,}/', $path) ) {
+		$system = explode( "/", $path ) ;
+		$system = $system[1] ;
+		if( (isset(getenv()['ALLOWED_SYSTEMS']) &&
+			 getenv()['ALLOWED_SYSTEMS']!="" &&
+			 getenv()['ALLOWED_SYSTEMS']!="*") ) {
+			if( !preg_match(getenv()['ALLOWED_SYSTEMS'], $system) ) {
+				close_with_403( "Not authorized" ) ;
+				exit( 1 ) ; // for good measure
+			}
+		}
+	}
+
 	if( !file_exists("/authorization.json") ) {
 		close_with_500( "server misconfiguration" ) ;
 		exit( 1 ) ; // for good measure
