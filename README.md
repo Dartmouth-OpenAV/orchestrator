@@ -72,6 +72,10 @@ defaults in **bold**
 
 When set to _true_, instead of using microservice mapping to get from a microservice name to a microservice ip/fqdn and port, the orchestrator will address it simply by its name with no mapping. This assumes that a lower layer will resolve the name. For example if running in a Docker setup where containers can talk to each other by name.
 
+`ALLOWED_SYSTEMS` {(string),_*_,(**null**)}
+
+When set to anything other than empty string or _*_, orchestrator will restrict which systems it will handle requests for. This is useful in large deployments to enforce segmentation. For example, 2 buildings could be on separate network, but all configurations still from from the same Github repository. In this case it's advisable to use `ALLOWED_SYSTEMS` so that the orchestrators in 1 building cannot be used to get the configations for the systems in another building. This environment variable can be set to a regular expression such as _/^(building_001|building_002|building_003)$/_ to explicitely list each allowed system, or something more extensible like _/^building_[0-9}{1,}$/_. This rule superseeds what is set in `/authorization.json`. Make sure to to consider escaping of special characters.
+
 `DNS_HARD_CACHE` {_true_, **_false_**}
 
 When set to _true_, DNS entries will be preserved on disk as a way to survive beyond reboots. This is meant to optimize resilience in front of outages, but it's not advantageous in all circumstances, and might cause issues with DNS entries changing. DNS entries which were persisted this way are wiped with the API call to "Clear Global Cache".
