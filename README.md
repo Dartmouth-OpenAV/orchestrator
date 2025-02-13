@@ -66,17 +66,32 @@ Collection available for import: [orchestrator.collection.json](https://github.c
 
 
 # Environment Variables
+defaults in **bold**
 
-`ADDRESS_MICROSERVICES_BY_NAME` when set to `true`, instead of using microservice mapping to get from a microservice name to a microservice ip/fqdn and port, the orchestrator will address it simply by its name with no mapping. This assumes that a lower layer will resolve the name. For example if running in a Docker setup where containers can talk to each other by name.
+`ADDRESS_MICROSERVICES_BY_NAME` {_true_, **_false_**}
 
-`DNS_HARD_CACHE` when set to `true`, DNS entries will be preserved on disk as a way to survive beyond reboots. This is meant to optimize resilience in front of outages, but it's not advantageous in all circumstances, and might cause issues with DNS entries changing. DNS entries which were persisted this way are wiped with the API call to "Clear Global Cache".
+When set to _true_, instead of using microservice mapping to get from a microservice name to a microservice ip/fqdn and port, the orchestrator will address it simply by its name with no mapping. This assumes that a lower layer will resolve the name. For example if running in a Docker setup where containers can talk to each other by name.
 
-`SYSTEM_CONFIGURATIONS_GITHUB_TOKEN` when using Github to host system configuration files, one would hope you do so in a private repository :). And so this environment variables serves to pass a token with read permission to that repository. Token based authentication isn't the best you can do here, you need to manage accounts, classic tokens are a liability, fine grained tokens expire. But it's quick to setup.
+`DNS_HARD_CACHE` {_true_, **_false_**}
 
-`SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID`, `SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID` & `SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM` instead of doing token based authentication into your Github reposity containing system configuration files, you can do App based authentication. This is the better method which avoids the shortcomings of tokens, but it's more work to setup.
+When set to _true_, DNS entries will be preserved on disk as a way to survive beyond reboots. This is meant to optimize resilience in front of outages, but it's not advantageous in all circumstances, and might cause issues with DNS entries changing. DNS entries which were persisted this way are wiped with the API call to "Clear Global Cache".
 
-`SYSTEM_CONFIGURATIONS_VIA_VOLUME` system configuration files can simply be passed by volume, when this is set to `true`, the orchestrator will look for configuration files in `/system_configurations`. This directory needs to be mounted in when instantiating the container.
+`SYSTEM_CONFIGURATIONS_GITHUB_TOKEN` {(string),(**null**)}
 
-`SYSTEM_CONFIGURATIONS_INSTANT_REFRESH` only effective when `SYSTEM_CONFIGURATIONS_VIA_VOLUME` is `true`. When set to `true` configuration files are instantaneously applied upon change. This is aggressive on the filesystem and meant only for development and demonstration purposes.
+When using Github to host system configuration files, one would hope you do so in a private repository :). And so this environment variables serves to pass a token with read permission to that repository. Token based authentication isn't the best you can do here, you need to manage accounts, classic tokens are a liability, fine grained tokens expire. But it's quick to setup.
 
-`VERSION` sets what the API call to "Get Version" will return
+`SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID`, `SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID` & `SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM` {(strings),(**nulls**)}
+
+Instead of doing token based authentication into your Github reposity containing system configuration files, you can do [App based authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app). This is the better method which avoids the shortcomings of tokens, but it's more work to setup. All 3 environment variables need to be defined for this authentication type to work.
+
+`SYSTEM_CONFIGURATIONS_VIA_VOLUME` {_true_, **_false_**}
+
+System configuration files can simply be passed by volume, when this is set to _true_, the orchestrator will look for configuration files in `/system_configurations`. It follows that this directory needs to be mounted in when instantiating the container.
+
+`SYSTEM_CONFIGURATIONS_INSTANT_REFRESH` {_true_, **_false_**}
+
+Only effective when `SYSTEM_CONFIGURATIONS_VIA_VOLUME` is _true_. When set to _true_ configuration files are instantaneously applied upon change. This is aggressive on the filesystem and meant only for development and demonstration purposes.
+
+`VERSION` {(string),(**null**)}
+
+sets what the API call to "Get Version" will return
