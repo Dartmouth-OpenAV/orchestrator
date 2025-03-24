@@ -188,7 +188,7 @@ if( php_sapi_name()==="cli" ) {
 }
 
 
-function run_cli_function( $function_name, $parameters=[] ) {
+function run_cli_function( $function_name, $parameters=[], $asynchronous=true ) {
 	if( !function_exists($function_name) ) {
 		return false ;
 	}
@@ -196,11 +196,14 @@ function run_cli_function( $function_name, $parameters=[] ) {
 		return false ;
 	}
 
-	$command = "/usr/bin/nohup /usr/bin/php {$_SERVER['SCRIPT_FILENAME']} \"{$function_name}\"" ;
+	$command = "/usr/bin/php {$_SERVER['SCRIPT_FILENAME']} \"{$function_name}\"" ;
 	if( count($parameters)>0 ) {
 		$command .= ' "' . implode( '" "', $parameters ) . '"' ;
 	}
-	$command .= " 2>&1 &" ;
+
+	if( $asynchronous===true ) {
+		$command = "/usr/bin/nohup {$command} 2>&1 &" ;
+	}
 
 	shell_exec( $command ) ;
 
@@ -404,6 +407,94 @@ function route_function_if_authorized( $function_name ) {
 //        |___/            
 
 
+function system_config_and_state_refresh( $system ) {
+	if( !file_exists("/data/{$system}.config.json") ) {
+		// we haven't heard from this system yet
+		$refresh = false ;
+		if( !file_exists("/data/{$system}.config.json.lock") ) {
+			$refresh = true ;
+		} else if( file_exists("/data/{$system}.config.json.lock") &&
+			       (time()-filemtime("/data/{$system}.config.json.lock"))>120 ) { // 2 minutes
+			@unlink( "/data/{$system}.state.json.lock" ) ;
+			(new error_())->add( "system config refresh lock file older than 2 minutes for system: {$system}",
+			                     "0qD4Cmk5K23j",
+					             3,
+					             "backend" ) ;
+			$refresh = true ;
+		}
+		if( $refresh ) {
+			touch( "/data/{$system}.config.json.lock" ) ;
+			run_cli_function( "cli_refresh_system_config", [$system], true ) ;
+		} // else, something else had the lock already must be refreshing it
+		close_with_204( "initializing" ) ;
+	} else {
+		// we've heard from it but let's keep the config fresh
+		if( (time()-filemtime("/data/{$system}.config.json"))>900 || // 15 minutes by default (GitHub)
+			(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" && (time()-filemtime("/data/{$system}.config.json"))>60) ) { // 1 minute for local
+			$refresh = false ;
+			if( !file_exists("/data/{$system}.config.json.lock") ) {
+				$refresh = true ;
+			} else if( file_exists("/data/{$system}.config.json.lock") &
+					   (time()-filemtime("/data/{$system}.config.json.lock"))>120 ) { // 2 minutes
+				@unlink( "/data/{$system}.state.json.lock" ) ;
+				(new error_())->add( "system config refresh lock file (/data/{$system}.state.json.lock) older than 2 minutes for system: {$system}",
+				                     "Kv06Tl8eyGS2",
+						             3,
+						             "backend" ) ;
+				$refresh = true ;
+			}
+		    
+		    if( $refresh ) {
+				touch( "/data/{$system}.config.json.lock" ) ;
+				run_cli_function( "cli_refresh_system_config", [$system], true ) ;
+			}
+		}
+	}
+
+	if( !file_exists("/data/{$system}.state.json") ) {
+		// we haven't refreshed this system's state yet
+		$refresh = false ;
+		if( !file_exists("/data/{$system}.state.lock") ) {
+			$refresh = true ;
+		} else if( file_exists("/data/{$system}.state.lock") &&
+			       (time()-filemtime("/data/{$system}.state.lock"))>60 ) { // 1 minute
+			@unlink( "/data/{$system}.state.state.lock" ) ;
+			(new error_())->add( "system state refresh lock file (/data/{$system}.state.lock) older than 1 minute for system: {$system}",
+			                     "8NJDx5o4D583",
+					             3,
+					             "backend" ) ;
+			$refresh = true ;
+		}
+		if( $refresh ) {
+			touch( "/data/{$system}.state.json.lock" ) ;
+			run_cli_function( "cli_refresh_system_state", [$system], true ) ;
+		}
+		close_with_204( "initializing" ) ;
+	} else {
+		// we've refreshed it and we need to keep it fresh
+		if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
+			$refresh = false ;
+			if( !file_exists("/data/{$system}.state.json.lock") ) {
+				$refresh = true ;
+			} else if( file_exists("/data/{$system}.state.json.lock") &&
+					   (time()-filemtime("/data/{$system}.state.json.lock"))>60 ) { // 1 minute
+				@unlink( "/data/{$system}.state.json.lock" ) ;
+				(new error_())->add( "system state refresh lock file (/data/{$system}.state.lock) older than 1 minute for system: {$system}",
+				                     "6RYeBYfVjW42",
+						             2,
+						             "backend" ) ;
+				$refresh = true ;
+			}
+		    
+		    if( $refresh ) {
+				touch( "/data/{$system}.state.json.lock" ) ;
+				run_cli_function( "cli_refresh_system_state", [$system], true ) ;
+			}
+		}
+	}
+}
+
+
 function get_system_state() {
 	global $path ;
 
@@ -414,86 +505,14 @@ function get_system_state() {
 		close_with_400( "invalid system name: {$system}" ) ;
 	}
 
-	// we haven't heard from this system yet
-	if( !file_exists("/data/{$system}.json") ) {
-		touch( "/data/{$system}.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_config", [$system] ) ;
-		close_with_204( "initializing" ) ;
-	}
-	// we've heard from it but let's keep the config fresh
-	if( (time()-filemtime("/data/{$system}.json"))>900 || // 15 minutes by default (GitHub)
-		(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" && (time()-filemtime("/data/{$system}.json"))>60) ) { // 1 minute for local
-		$refresh = false ;
-		if( file_exists("/data/{$system}.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system config refresh lock file older than 10 minutes for system: {$system}",
-				                     "Y74Z5Dym1V2L",
-						             2,
-						             "backend" ) ;
-				$refresh = true ;
-			}
-		} else {
-			$refresh = true ;
-		}
-	    
-	    if( $refresh ) {
-			touch( "/data/{$system}.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_config", [$system] ) ;
-		}
-	}
-	// we've heard from it and we want instant refresh for development or demonstration
-	//   this is a special case and shouldn't be in effect in production
-	if( getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']=="true" &&
-		getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
-			$refresh = false ;
-			if( !file_exists("/system_configurations/{$system}.json") ) {
-				(new error_())->add( "system config from volume for instant refresh doesn't exist",
-				                     "RQ050szoObz8",
-						             1,
-						             "backend" ) ;
-				close_with_404( "system doesn't exist" ) ;
-			}
-			if( !file_exists("/data/{$system}.json") ||
-				filemtime("/system_configurations/{$system}.json")>=filemtime("/data/{$system}.json") ) { // 1 second resolution so >= to be extra safe, yes it might result in extraneous copies but the whole point is to be aggressive here
-				$refresh = true ;
-			}
-			if( $refresh ) {
-				$content = safe_file_get_contents( "/system_configurations/{$system}.json" ) ;
-				if( !is_valid_system_config($content) ) {
-					close_with_500( "system config is invalid" ) ;
-				}
-				process_system_config( $content, ['system'=>$system] ) ;
-				safe_file_put_contents( "/data/{$system}.json", $content ) ;
-				@unlink( "/data/{$system}.state.json" ) ;
-				@unlink( "/data/{$system}.state.json.lock" ) ;
-			}
-	}
+	system_config_and_state_refresh( $system ) ;
 
-	// we haven't refreshed this system's state yet
 	if( !file_exists("/data/{$system}.state.json") ) {
-		touch( "/data/{$system}.state.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_state", [$system] ) ;
-		close_with_204( "initializing" ) ;
-	}
-	// we've refreshed it and we need to keep it fresh
-	if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
-		$refresh = false ;
-		if( file_exists("/data/{$system}.state.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.state.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system state refresh lock file older than 10 minutes for system: {$system}",
-				                     "M2spq9100P3P",
-						             2,
-						             "backend" ) ;
-				$refresh = true ;
-			}
-		} else {
-			$refresh = true ;
-		}
-	    
-	    if( $refresh ) {
-			touch( "/data/{$system}.state.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_state", [$system] ) ;
-		}
+		(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
+		                     "A80ta0eX6fsL",
+				             1,
+				             "backend" ) ;
+		close_with_500( "server error" ) ;
 	}
 
 	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
@@ -504,6 +523,8 @@ function get_system_state() {
 
 function update_system_state() {
 	global $path ;
+
+	// TODO: throttling requests
 
 	$system = explode( "/", $path ) ;
 	$system = $system[1] ;
@@ -517,63 +538,26 @@ function update_system_state() {
 		close_with_400( "provided update is invalid JSON" ) ;
 	}
 
-	// we haven't heard from this system yet
-	if( !file_exists("/data/{$system}.json") ) {
-		touch( "/data/{$system}.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_config", [$system] ) ;
-		close_with_204( "initializing" ) ;
-	}
-	// we've heard from it but let's keep the config fresh
-	if( (time()-filemtime("/data/{$system}.json"))>900 ) { // 15 minutes
-		$refresh = false ;
-		if( file_exists("/data/{$system}.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system config refresh lock file older than 10 minutes for system: {$system}",
-				                     "f5GKacBQt07y",
-						             2,
-						             "backend" ) ;
-				$refresh = true ;
-			}
-		} else {
-			$refresh = true ;
-		}
-	    
-	    if( $refresh ) {
-			touch( "/data/{$system}.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_config", [$system] ) ;
-		}
-	}
+	system_config_and_state_refresh( $system ) ;
 
-	// we haven't refreshed this system's state yet
-	if( !file_exists("/data/{$system}.state.json") ) {
-		touch( "/data/{$system}.state.json.lock" ) ;
-		run_cli_function( "cli_refresh_system_state", [$system] ) ;
-		close_with_204( "initializing" ) ;
+	if( !file_exists("/data/{$system}.config.json") ) {
+		(new error_())->add( "system config file (/data/{$system}.config.json) should exist",
+		                     "8Ov670d98yRl",
+				             1,
+				             "backend" ) ;
+		close_with_500( "server error" ) ;
 	}
-	// we've refreshed it and we need to keep it fresh
-	if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
-		$refresh = false ;
-		if( file_exists("/data/{$system}.state.json.lock") ) {
-			if( (time()-filemtime("/data/{$system}.state.json.lock"))>600 ) { // 10 minutes
-				(new error_())->add( "system state refresh lock file older than 10 minutes for system: {$system}",
-				                     "6RYeBYfVjW42",
-						             2,
-						             "backend" ) ;
-				$refresh = true ;
-			}
-		} else {
-			$refresh = true ;
-		}
-	    
-	    if( $refresh ) {
-			touch( "/data/{$system}.state.json.lock" ) ;
-			run_cli_function( "cli_refresh_system_state", [$system] ) ;
-		}
+	$system_config = json_decode( safe_file_get_contents("/data/{$system}.config.json"), true ) ;
+	if( !file_exists("/data/{$system}.config.json") ) {
+		(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
+		                     "poeUBK56197c",
+				             1,
+				             "backend" ) ;
+		close_with_500( "server error" ) ;
 	}
-
-	$system_config = json_decode( safe_file_get_contents("/data/{$system}.json"), true ) ;
 	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
-	// we merge it with the desired update
+	
+	// we merge it all with the desired update
 	$accumulated_microservice_sequences = [] ;
 	$error = null ;
 	merge_current_state_with_update( $system_config, $system_state, $update, $accumulated_microservice_sequences, $error ) ;
@@ -582,14 +566,26 @@ function update_system_state() {
 		close_with_400( $error ) ;
 	}
 
-	safe_file_put_contents( "/data/{$system}.state.json", json_encode($system_state) ) ;
-	@unlink( "/data/{$system}.state.json.lock" ) ;
-
 	$microservice_sequences_filename = "/data/{$system}.state.microservice_sequences." . md5( microtime() ) . ".json" ;
 	safe_file_put_contents( $microservice_sequences_filename, json_encode($accumulated_microservice_sequences) ) ;
-	run_cli_function( "cli_run_microservice_sequences", [$system, $microservice_sequences_filename] ) ;
+	run_cli_function( "cli_run_microservice_sequences", [$system, $microservice_sequences_filename], false ) ;
 
-	close_with_200( $system_state ) ;
+	// the only time we need to do a synchronous system state update, we enable output buffering and wipe it because cli functions can have output that is only meant for a cli context and we're in a web client context here
+	ob_start() ;
+	$new_state = cli_refresh_system_state( $system, true ) ;
+	ob_clean() ;
+
+
+	// if( !file_exists("/data/{$system}.config.json") ) {
+	// 	(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
+	// 	                     "poeUBK56197c",
+	// 			             1,
+	// 			             "backend" ) ;
+	// 	close_with_500( "server error" ) ;
+	// }
+	// $system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
+
+	close_with_200( json_decode($new_state, true) ) ;
 }
 
 
@@ -634,7 +630,7 @@ function cli_refresh_system_config( $system ) {
 
 	if( $content===false ) {
 		// something went wrong
-		if( file_exists("/data/{$system}.json") ) {
+		if( file_exists("/data/{$system}.config.json") ) {
 			(new error_())->add( "unable to refresh config for system: {$system}, I have a previous copy at least",
 				                 "Ie5N0P4PZ9kr",
 						         3,
@@ -649,7 +645,7 @@ function cli_refresh_system_config( $system ) {
 	}
 
 	if( !is_valid_system_config($content) ) {
-		if( file_exists("/data/{$system}.json") ) {
+		if( file_exists("/data/{$system}.config.json") ) {
 			(new error_())->add( "config for system: {$system} is invalid, I have a previous copy at least",
 				                 "T3o5i84TVGV8",
 						         3,
@@ -665,17 +661,34 @@ function cli_refresh_system_config( $system ) {
 
 	process_system_config( $content, ['system'=>$system] ) ;
 
-	safe_file_put_contents( "/data/{$system}.json", $content ) ;
-	@unlink( "/data/{$system}.json.lock" ) ;
+	$retrieve_initial_system_state = false ;
+	if( !file_exists("/data/{$system}.config.json") ) {
+		$retrieve_initial_system_state = true ;
+	}
+
+	safe_file_put_contents( "/data/{$system}.config.json", $content ) ;
+	@unlink( "/data/{$system}.config.json.lock" ) ;
+
+	
+	if( $retrieve_initial_system_state ) {
+		touch( "/data/{$system}.state.json.lock" ) ;
+		run_cli_function( "cli_refresh_system_state", [$system] ) ;
+	}
 
 	return true ;
 }
 
 
-function cli_refresh_system_state( $system ) {
+function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 	$system_config = [] ;
 
-	if( !file_exists("/data/{$system}.json") ) {
+	if( $direct_call_and_override &&
+		file_exists("/data/{$system}.state.json.lock") ) {
+		// look like we received an active system state update, we want to make sure its result will take precedence over passive background refreshes that might have been in progress
+		shell_exec( "/usr/bin/pkill -f '/usr/bin/php cli_refresh_system_state {$system}\$'" ) ;
+	}
+
+	if( !file_exists("/data/{$system}.config.json") ) {
 		(new error_())->add( "config for system: {$system} doesn't exist at the time of state refresh",
 			                 "B9X9cwA7ls4f",
 					         1,
@@ -683,7 +696,7 @@ function cli_refresh_system_state( $system ) {
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
-	$system_config = safe_file_get_contents( "/data/{$system}.json" ) ;
+	$system_config = safe_file_get_contents( "/data/{$system}.config.json" ) ;
 	$system_config = json_decode( $system_config, true ) ;
 	if( $system_config===null ) {
 		(new error_())->add( "config for system: {$system} doesn't parse at the time of state refresh",
@@ -740,17 +753,12 @@ function cli_refresh_system_state( $system ) {
 
 	$system_state = json_encode( $system_state ) ;
 
-	if( !file_exists("/data/{$system}.state.json") ||
-		!file_exists("/data/{$system}.state.json.lock") ||
-		(file_exists("/data/{$system}.state.json") &&
-		 file_exists("/data/{$system}.state.json.lock") &&
-		 filemtime("/data/{$system}.state.json")<=filemtime("/data/{$system}.state.json.lock")) ) {
-		safe_file_put_contents( "/data/{$system}.state.json", $system_state ) ;
-	} else {
-		// likely, a state update arrived between the time we started our state update and now
-		//   the update takes precedence so we abandon our efforts
-	}
+	safe_file_put_contents( "/data/{$system}.state.json", $system_state ) ;
 	@unlink( "/data/{$system}.state.json.lock" ) ;
+	
+	if( $direct_call_and_override ) {
+		return $system_state ;
+	}
 
 	return true ;
 }
@@ -974,14 +982,16 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 		    if( isset($system_config['set_process']) ) {
 		    	require_once( "system_state_process_functions.php" ) ;
 		    	if( gettype($system_config['set_process'])=="string" ) {
-		    		if( !function_exists($system_config['set_process']) ) {
-		    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
-					                 	     "w1ZqaCb014Th",
-							         	     2,
-							         	     "backend" ) ;
-		    		} else {
-				    	$variables = call_user_func( $system_config['set_process'], $update ) ;
-				    }
+		    		if( trim($system_config['set_process'])!="" ) {
+			    		if( !function_exists($system_config['set_process']) ) {
+			    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
+						                 	     "w1ZqaCb014Th",
+								         	     2,
+								         	     "backend" ) ;
+			    		} else {
+					    	$variables = call_user_func( $system_config['set_process'], $update ) ;
+					    }
+					}
 			    } else if( gettype($system_config['set_process'])=="array" ) {
 			    	if( isset($system_config['set_process']['function_name']) ) {
 			    		if( !function_exists($system_config['set_process']['function_name']) ) {
