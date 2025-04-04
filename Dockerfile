@@ -8,7 +8,7 @@ ENV TZ=America/New_York
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # utilities
-RUN DEBIAN_FRONTEND=noninteractive apt-get install screen htop telnet w3m vim-tiny jq -y
+RUN DEBIAN_FRONTEND=noninteractive apt-get install screen htop telnet w3m curl vim-tiny jq -y
 
 # web server
 RUN DEBIAN_FRONTEND=noninteractive apt-get install apache2 php php-curl php-xml libapache2-mod-php -y
