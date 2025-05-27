@@ -1464,7 +1464,7 @@ function create_client_error() {
 	$client_dns = resolve_dns( $client_ip ) ;
 	$client_user_agent = $_SERVER['HTTP_USER_AGENT'] ;
 	
-	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data}",
+	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data['message']}",
 		                 $code,
         				 $severity,
 				         ["client"],
