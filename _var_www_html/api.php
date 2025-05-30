@@ -809,6 +809,8 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 		run_microservice_sequence( $microservice_sequence, $microservices_mapping, true ) ;
 	}
 
+	unlink( $microservice_sequences_filename ) ;
+
 	return true ;
 }
 
