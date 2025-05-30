@@ -21,6 +21,9 @@ COPY _etc_apache2_sites-available_default.conf /etc/apache2/sites-available/000-
 # memcached
 RUN DEBIAN_FRONTEND=noninteractive apt-get install php-memcached memcached libmemcached-tools -y
 
+# sqlite
+RUN DEBIAN_FRONTEND=noninteractive apt-get install sqlite3 php-sqlite3 -y
+
 COPY _start.sh /start.sh
 RUN chmod 550 /start.sh
 

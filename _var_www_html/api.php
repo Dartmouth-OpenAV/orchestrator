@@ -41,6 +41,7 @@ require_once( "include/error.php" ) ;
 require_once( "include/github.php" ) ;
 require_once( "include/memcached.php" ) ;
 require_once( "include/utilities.php" ) ;
+require_once( "include/web_calls.php" ) ;
 
 
 
@@ -64,10 +65,10 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 				             1,
 				             "backend" ) ;
 		if( php_sapi_name()==="cli" ) {
-			echo "server misconfiguration" ;
+			echo "server misconfiguration lXl01G4c3AOz" ;
 			exit( 1 ) ;
 		} else {
-			close_with_500( "server misconfiguration" ) ;
+			close_with_500( "server misconfiguration lXl01G4c3AOz" ) ;
 			exit( 1 ) ; // for good measure
 		}
 	}
@@ -95,10 +96,10 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 				             1,
 				             "backend" ) ;
 		if( php_sapi_name()==="cli" ) {
-			echo "server misconfiguration" ;
+			echo "server misconfiguration 7s7tkkwi4A0x" ;
 			exit( 1 ) ;
 		} else {
-			close_with_500( "server misconfiguration" ) ;
+			close_with_500( "server misconfiguration 7s7tkkwi4A0x" ) ;
 			exit( 1 ) ; // for good measure
 		}
 		
@@ -114,10 +115,10 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']) &&
 				             1,
 				             "backend" ) ;
 		if( php_sapi_name()==="cli" ) {
-			echo "server misconfiguration" ;
+			echo "server misconfiguration DURM8ib6m0HD" ;
 			exit( 1 ) ;
 		} else {
-			close_with_500( "server misconfiguration" ) ;
+			close_with_500( "server misconfiguration DURM8ib6m0HD" ) ;
 			exit( 1 ) ; // for good measure
 		}
 }
@@ -131,10 +132,10 @@ if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 				             1,
 				             "backend" ) ;
 		if( php_sapi_name()==="cli" ) {
-			echo "server misconfiguration" ;
+			echo "server misconfiguration Ck98XG1SKeC3" ;
 			exit( 1 ) ;
 		} else {
-			close_with_500( "server misconfiguration" ) ;
+			close_with_500( "server misconfiguration Ck98XG1SKeC3" ) ;
 			exit( 1 ) ; // for good measure
 		}
 	}
@@ -282,7 +283,7 @@ function route_function_if_authorized( $function_name ) {
 	}
 
 	if( !file_exists("/authorization.json") ) {
-		close_with_500( "server misconfiguration" ) ;
+		close_with_500( "server misconfiguration FTcPYB05oK33" ) ;
 		exit( 1 ) ; // for good measure
 	}
 	$authorization = safe_file_get_contents( "/authorization.json" ) ;
@@ -293,7 +294,7 @@ function route_function_if_authorized( $function_name ) {
 		$authorization = json_decode( $authorization, true ) ;
 
 		if( !is_array($authorization) ) {
-			close_with_500( "server misconfiguration" ) ;
+			close_with_500( "server misconfiguration XG8kOpa29aJ3" ) ;
 			exit( 1 ) ; // for good measure
 		}
 		foreach( $authorization as $rule ) {
@@ -913,9 +914,9 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 						$system_config = json_encode( $results ) ;
 					} else {
 						// ok we're good
-						foreach( $results as &$result ) {
-							$result = json_decode( $result, true ) ;
-						}
+						// foreach( $results as &$result ) {
+						// 	$result = json_decode( $result, true ) ;
+						// }
 						unset( $result ) ;
 						if( substr_count($system_config['get_process'], "(")==1 &&
 							substr_count($system_config['get_process'], ")")==1 ) {
@@ -1145,243 +1146,273 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
         return $results ; // which should only be [] at this point
 	}
 	foreach( $microservice_sequence as $microservice_call ) {
-        $request_method = "GET" ;
-        $request_headers = [] ;
-        $request_body = "" ;
-        $repo_owner = false ;
-        $repo_path = false ;
-        $repo_name = false ;
-        $tag = false ;
-        $device_username = false ;
-        $device_password = false ;
-        $device_fqdn = "" ;
-        $microservice_path_and_get_variables = "" ;
-        $microservice_error_to_return = false ;
-        $no_cache = false ;
+		if( gettype($microservice_call)==="array" &&
+			array_key_exists('url', $microservice_call) ) {
+			// arbitrary web call
+			$request_url     = $microservice_call['url'] ;
+			$request_method  = $microservice_call['method']??"GET" ;
+			$request_headers = $microservice_call['headers']??[] ;
+			$request_body    = $microservice_call['body']??"" ;
 
-        if( gettype($microservice_call)==="array" ) {
-            if( isset($microservice_call['method']) &&
-                is_string($microservice_call['method']) ) {
-                $request_method = $microservice_call['method'] ;
-            }
-            if( isset($microservice_call['headers']) &&
-                is_array($microservice_call['headers']) ) {
-                $request_headers = $microservice_call['headers'] ;
-            }
-            if( isset($microservice_call['body']) ) {
-                $request_body = $microservice_call['body'] ;
-            }
-            if( isset($microservice_call['error_return']) ) {
-                $microservice_error_to_return = $microservice_call['error_return'] ;
-            }
-            if( isset($microservice_call['no_cache']) &&
-                $microservice_call['no_cache']===true ) {
-                $no_cache = true ;
-            }
-
-            if( isset($microservice_call['microservice']) &&
-                is_string($microservice_call['microservice']) ) {
-                $microservice_call = $microservice_call['microservice'] ;
-            } else if( isset($microservice_call['driver']) && // legacy name
-                       is_string($microservice_call['driver']) ) {
-                $microservice_call = $microservice_call['driver'] ;
-            }
-        }
-
-        if( gettype($microservice_call)==="string" ) {
-        	$repo_parts = explode( "/", $microservice_call ) ;
-            $repo_owner = $repo_parts[0] ;
-            $repo_path = "/" ;
-            $i=1 ;
-            while( $i<count($repo_parts) &&
-            	   substr_count($repo_parts[$i], ":")==0 ) {
-            	$repo_path .= "{$repo_parts[$i]}/" ;
-	            $i++ ;
-            }
-            $repo_name = "" ;
-            if( substr_count($repo_parts[$i], ":")==1 ) {
-            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
-            }
-            $tag = explode( ":", explode("/", $microservice_call)[$i] )[1] ;
-            $i++ ;
-            $device_fqdn = explode( "/", $microservice_call )[$i] ;
-            if( preg_match('/^.*\:.*\@.*$/', $device_fqdn) ) { // simple auth
-                $device_username = explode( ":", explode("@", $device_fqdn)[0] )[0] ;
-                $device_password = explode( ":", explode("@", $device_fqdn)[0] )[1] ;
-                $device_fqdn = explode( "@", $device_fqdn )[1] ;
-            }
-            $i++ ;
-            $microservice_path_and_get_variables = "/" . implode( "/", array_slice(explode("/", $microservice_call), $i) ) ;
-        }
-
-        if( $verbose ) {
-        	$microservice_call_to_display = $microservice_call ;
-        	if( gettype($microservice_call_to_display)!="string" ) {
-        		$microservice_call_to_display = var_export( $microservice_call_to_display, true ) ;
-        	}
-	        echo "> microservice call: {$microservice_call_to_display}\n" ;
-	        echo ">   parameters:\n" ;
-	        echo ">     request_method: {$request_method}\n" ;
-	        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
-	        echo ">     request_body: {$request_body}\n" ;
-	        echo ">     repo_owner: {$repo_owner}\n" ;
-	        echo ">     repo_path: {$repo_path}\n" ;
-	        echo ">     repo_name: {$repo_name}\n" ;
-	        echo ">     tag: {$tag}\n" ;
-	        echo ">     device_username: {$device_username}\n" ;
-	        echo ">     device_password: {$device_password}\n" ;
-	        echo ">     device_fqdn: {$device_fqdn}\n" ;
-	        echo ">     microservice_path_and_get_variables: {$microservice_path_and_get_variables}\n" ;
-	    }
-
-	    $proceed_with_call = true ;
-
-        if( $repo_owner===false || $repo_path===false || $repo_name===false || $tag==="false" ) {
-            (new error_())->add( "invalid microservice call: {$microservice_call}",
-                                 "EQr87gl3YCKm",
-                                 2,
-                                 "config" ) ;
-            echo ">   invalid microservice call: {$microservice_call}\n" ;
-            $proceed_with_call = false ;
-            $results[] = null ;
-        }
-
-        if( $tag=="current" ) {
-            $tag = get_version( true ) ;
-        }
-
-        if( $microservices_mapping!==null &&
-        	!isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
-            (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
-                                 "fN45HdtBEv8T",
-                                 2,
-                                 "backend" ) ;
-            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
-            $proceed_with_call = false ;
-            $results[] = null ;
-        }
-
-        
-        if( $proceed_with_call ) {
-        	$url ;
-        	if( $microservices_mapping===null ) {
-        		$url = $repo_name . "/" ;
-        	} else {
-		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+			if( $verbose ) {
+		        echo "> web call: {$request_url}\n" ;
+		        echo ">   parameters:\n" ;
+		        echo ">     request_method: {$request_method}\n" ;
+		        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
+		        echo ">     request_body: {$request_body}\n" ;
 		    }
-	        if( $device_username!==false ||
-	        	$device_password!==false ) {
-	        	if( $device_username!==false ) {
-	        		$url .= $device_username ;
-	        	}
-	        	$url .= ":" ;
-	        	if( $device_password!==false ) {
-	        		$url .= $device_password ;
-	        	}
-	        	$url .= "@" ;
-	        }
-	        $url .= $device_fqdn . $microservice_path_and_get_variables ;
-	        if( $verbose ) {
-	        	echo ">   url: {$url}\n" ;
-	        }
-			$cache_data = null ;
-			$cache_keys = null ;
-	        // microservice
-			$cache_keys = $memcached->retrieve( $device_fqdn ) ;
-			if( $is_a_set && $cache_keys!==null ) {
-				if( $verbose ) {
-		        	echo ">   wiping cache for device: {$device_fqdn}\n" ;
-		        }
-				// we're setting on the device, we want to wipe its cache for subsequent gets to get new data
-	            //   that's because some endpoints might be interdependent and changing one might affect another
-	            //   for example, changing the volume might unmute
-				foreach( $cache_keys as $cache_key ) {
-					$memcached->delete( $cache_key ) ;
-				}
-				$memcached->delete( $device_fqdn ) ;
-			} else {
-				// we're getting, maybe we can hit the cache
-				$cache_data = $memcached->retrieve( $url ) ;
-				if( $verbose ) {
-		        	echo ">   checking cache for data\n" ;
-		        }
+
+		    if( $is_a_set ) {
+		    	$results[] = (new web_calls_())->synchronous_web_call( $request_url,
+		                                 				               $request_method,
+		                                 				               $request_headers,
+		                                 				               $request_body ) ;
+		    } else {
+			    $results[] = (new web_calls_())->get_decoupled_data( $request_url,
+		                                 				             $request_method,
+		                                 				             $request_headers,
+		                                 				             $request_body ) ;
 			}
+		} else {
+			// microservice call
+	        $request_method = "GET" ;
+	        $request_headers = [] ;
+	        $request_body = "" ;
+	        $repo_owner = false ;
+	        $repo_path = false ;
+	        $repo_name = false ;
+	        $tag = false ;
+	        $device_username = false ;
+	        $device_password = false ;
+	        $device_fqdn = "" ;
+	        $microservice_path_and_get_variables = "" ;
+	        $microservice_error_to_return = false ;
+	        $no_cache = false ;
 
-			if( !$is_a_set &&
-				$cache_data!==null ) {
-				if( $verbose ) {
-		        	echo ">     cache hit\n" ;
-		        }
-				$results[] = $cache_data ;
-			} else {
-				if( $verbose ) {
-		        	echo ">   proceeding with call\n" ;
-		        }
-				$ch = curl_init() ;
-				curl_setopt( $ch, CURLOPT_URL, $url ) ;
-				curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false ) ;
-				curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, $request_method ) ;
-				if( $request_body!=="" ) {
-					if( gettype($request_body)=="string" ) {
-	        			curl_setopt( $ch, CURLOPT_POSTFIELDS, $request_body ) ;
-	        		} else {
-	        			curl_setopt( $ch, CURLOPT_POSTFIELDS, json_encode($request_body) ) ;
-	        		}
-	    		}
-	    		if( count($request_headers)>0 ) {
-					curl_setopt( $ch, CURLOPT_HTTPHEADER, $request_headers ) ;
-	    		}
-				curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 1 ) ;
-				curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ) ;
-				curl_setopt( $ch, CURLOPT_TIMEOUT, 5 ) ;
-				$response = curl_exec( $ch ) ;
-				$response_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE ) ;
-				$curl_errno = curl_errno( $ch ) ;
-				curl_close( $ch ) ;
+	        if( gettype($microservice_call)==="array" ) {
+	            if( isset($microservice_call['method']) &&
+	                is_string($microservice_call['method']) ) {
+	                $request_method = $microservice_call['method'] ;
+	            }
+	            if( isset($microservice_call['headers']) &&
+	                is_array($microservice_call['headers']) ) {
+	                $request_headers = $microservice_call['headers'] ;
+	            }
+	            if( isset($microservice_call['body']) ) {
+	                $request_body = $microservice_call['body'] ;
+	            }
+	            if( isset($microservice_call['error_return']) ) {
+	                $microservice_error_to_return = $microservice_call['error_return'] ;
+	            }
+	            if( isset($microservice_call['no_cache']) &&
+	                $microservice_call['no_cache']===true ) {
+	                $no_cache = true ;
+	            }
 
-				if( $verbose ) {
-					echo ">     response_code: {$response_code}\n" ;
-					echo ">     response:\n" ;
-					print_r( $response ) ;
-					echo "\n" ;
+	            if( isset($microservice_call['microservice']) &&
+	                is_string($microservice_call['microservice']) ) {
+	                $microservice_call = $microservice_call['microservice'] ;
+	            } else if( isset($microservice_call['driver']) && // legacy name
+	                       is_string($microservice_call['driver']) ) {
+	                $microservice_call = $microservice_call['driver'] ;
+	            }
+	        }
+
+	        if( gettype($microservice_call)==="string" ) {
+	        	$repo_parts = explode( "/", $microservice_call ) ;
+	            $repo_owner = $repo_parts[0] ;
+	            $repo_path = "/" ;
+	            $i=1 ;
+	            while( $i<count($repo_parts) &&
+	            	   substr_count($repo_parts[$i], ":")==0 ) {
+	            	$repo_path .= "{$repo_parts[$i]}/" ;
+		            $i++ ;
+	            }
+	            $repo_name = "" ;
+	            if( substr_count($repo_parts[$i], ":")==1 ) {
+	            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
+	            }
+	            $tag = explode( ":", explode("/", $microservice_call)[$i] )[1] ;
+	            $i++ ;
+	            $device_fqdn = explode( "/", $microservice_call )[$i] ;
+	            if( preg_match('/^.*\:.*\@.*$/', $device_fqdn) ) { // simple auth
+	                $device_username = explode( ":", explode("@", $device_fqdn)[0] )[0] ;
+	                $device_password = explode( ":", explode("@", $device_fqdn)[0] )[1] ;
+	                $device_fqdn = explode( "@", $device_fqdn )[1] ;
+	            }
+	            $i++ ;
+	            $microservice_path_and_get_variables = "/" . implode( "/", array_slice(explode("/", $microservice_call), $i) ) ;
+	        }
+
+	        if( $verbose ) {
+	        	$microservice_call_to_display = $microservice_call ;
+	        	if( gettype($microservice_call_to_display)!="string" ) {
+	        		$microservice_call_to_display = var_export( $microservice_call_to_display, true ) ;
+	        	}
+		        echo "> microservice call: {$microservice_call_to_display}\n" ;
+		        echo ">   parameters:\n" ;
+		        echo ">     request_method: {$request_method}\n" ;
+		        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
+		        echo ">     request_body: {$request_body}\n" ;
+		        echo ">     repo_owner: {$repo_owner}\n" ;
+		        echo ">     repo_path: {$repo_path}\n" ;
+		        echo ">     repo_name: {$repo_name}\n" ;
+		        echo ">     tag: {$tag}\n" ;
+		        echo ">     device_username: {$device_username}\n" ;
+		        echo ">     device_password: {$device_password}\n" ;
+		        echo ">     device_fqdn: {$device_fqdn}\n" ;
+		        echo ">     microservice_path_and_get_variables: {$microservice_path_and_get_variables}\n" ;
+		    }
+
+		    $proceed_with_call = true ;
+
+	        if( $repo_owner===false || $repo_path===false || $repo_name===false || $tag==="false" ) {
+	            (new error_())->add( "invalid microservice call: {$microservice_call}",
+	                                 "EQr87gl3YCKm",
+	                                 2,
+	                                 "config" ) ;
+	            echo ">   invalid microservice call: {$microservice_call}\n" ;
+	            $proceed_with_call = false ;
+	            $results[] = null ;
+	        }
+
+	        if( $tag=="current" ) {
+	            $tag = get_version( true ) ;
+	        }
+
+	        if( $microservices_mapping!==null &&
+	        	!isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
+	            (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
+	                                 "fN45HdtBEv8T",
+	                                 2,
+	                                 "backend" ) ;
+	            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
+	            $proceed_with_call = false ;
+	            $results[] = null ;
+	        }
+
+	        
+	        if( $proceed_with_call ) {
+	        	$url ;
+	        	if( $microservices_mapping===null ) {
+	        		$url = $repo_name . "/" ;
+	        	} else {
+			        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+			    }
+		        if( $device_username!==false ||
+		        	$device_password!==false ) {
+		        	if( $device_username!==false ) {
+		        		$url .= $device_username ;
+		        	}
+		        	$url .= ":" ;
+		        	if( $device_password!==false ) {
+		        		$url .= $device_password ;
+		        	}
+		        	$url .= "@" ;
+		        }
+		        $url .= $device_fqdn . $microservice_path_and_get_variables ;
+		        if( $verbose ) {
+		        	echo ">   url: {$url}\n" ;
+		        }
+				$cache_data = null ;
+				$cache_keys = null ;
+		        // microservice
+				$cache_keys = $memcached->retrieve( $device_fqdn ) ;
+				if( $is_a_set && $cache_keys!==null ) {
+					if( $verbose ) {
+			        	echo ">   wiping cache for device: {$device_fqdn}\n" ;
+			        }
+					// we're setting on the device, we want to wipe its cache for subsequent gets to get new data
+		            //   that's because some endpoints might be interdependent and changing one might affect another
+		            //   for example, changing the volume might unmute
+					foreach( $cache_keys as $cache_key ) {
+						$memcached->delete( $cache_key ) ;
+					}
+					$memcached->delete( $device_fqdn ) ;
+				} else {
+					// we're getting, maybe we can hit the cache
+					$cache_data = $memcached->retrieve( $url ) ;
+					if( $verbose ) {
+			        	echo ">   checking cache for data\n" ;
+			        }
 				}
 
-				if( $response_code==200 ) {
-					$results[] = $response ;
-					if( !$is_a_set ) {
-						if( $no_cache!==true ) {
-							echo ">  storing in cache\n" ;
-							if( $cache_keys===null || !is_array($cache_keys) ) {
-								$cache_keys = [] ;
-							}
-							if( !in_array($url, $cache_keys) ) {
-								$cache_keys[] = $url ;
-							}
-							$memcached->store( $device_fqdn, $cache_keys, 0 ) ;
-							$memcached->store( $url, $response, 60 ) ;
-						}
-					}
-				} else { // $response_code!=200
-					$only_a_204_on_a_fresh_microservice = false ;
-					if( $response_code==204 && is_fresh_device($device_fqdn) ) {
-						$only_a_204_on_a_fresh_microservice = true ;
+				if( !$is_a_set &&
+					$cache_data!==null ) {
+					if( $verbose ) {
+			        	echo ">     cache hit\n" ;
+			        }
+					$results[] = $cache_data ;
+				} else {
+					if( $verbose ) {
+			        	echo ">   proceeding with call\n" ;
+			        }
+					$ch = curl_init() ;
+					curl_setopt( $ch, CURLOPT_URL, $url ) ;
+					curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false ) ;
+					curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, $request_method ) ;
+					if( $request_body!=="" ) {
+						if( gettype($request_body)=="string" ) {
+		        			curl_setopt( $ch, CURLOPT_POSTFIELDS, $request_body ) ;
+		        		} else {
+		        			curl_setopt( $ch, CURLOPT_POSTFIELDS, json_encode($request_body) ) ;
+		        		}
+		    		}
+		    		if( count($request_headers)>0 ) {
+						curl_setopt( $ch, CURLOPT_HTTPHEADER, $request_headers ) ;
+		    		}
+					curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 1 ) ;
+					curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ) ;
+					curl_setopt( $ch, CURLOPT_TIMEOUT, 5 ) ;
+					$response = curl_exec( $ch ) ;
+					$response_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE ) ;
+					$curl_errno = curl_errno( $ch ) ;
+					curl_close( $ch ) ;
+
+					if( $verbose ) {
+						echo ">     response_code: {$response_code}\n" ;
+						echo ">     response:\n" ;
+						print_r( $response ) ;
+						echo "\n" ;
 					}
 
-					if( !$only_a_204_on_a_fresh_microservice ) {
-						$timeout_potentially = "" ;
-						if( $curl_errno==28 ) {
-							$timeout_potentially = " (which is a timeout)" ;
+					if( $response_code==200 ) {
+						$results[] = $response ;
+						if( !$is_a_set ) {
+							if( $no_cache!==true ) {
+								echo ">  storing in cache\n" ;
+								if( $cache_keys===null || !is_array($cache_keys) ) {
+									$cache_keys = [] ;
+								}
+								if( !in_array($url, $cache_keys) ) {
+									$cache_keys[] = $url ;
+								}
+								$memcached->store( $device_fqdn, $cache_keys, 0 ) ;
+								$memcached->store( $url, $response, 60 ) ;
+							}
+						}
+					} else { // $response_code!=200
+						$only_a_204_on_a_fresh_microservice = false ;
+						if( $response_code==204 && is_fresh_device($device_fqdn) ) {
+							$only_a_204_on_a_fresh_microservice = true ;
 						}
 
-						if( $microservice_error_to_return!==false ) {
-							$results[] = $microservice_error_to_return ;
-						} else {
-							$results[] = null ;
+						if( !$only_a_204_on_a_fresh_microservice ) {
+							$timeout_potentially = "" ;
+							if( $curl_errno==28 ) {
+								$timeout_potentially = " (which is a timeout)" ;
+							}
+
+							if( $microservice_error_to_return!==false ) {
+								$results[] = $microservice_error_to_return ;
+							} else {
+								$results[] = null ;
+							}
+							(new error_())->add( "microservice call failed:\n\nrequest:\n  method: {$request_method}\n  url: {$url}  body: {$request_body}\n  headers: " . implode( "\n    ", $request_headers ) . "\n\nresponse:\n  response_code: {$response_code}\n  response: {$response}\n  curl_errno: {$curl_errno}{$timeout_potentially}",
+		                 	 "qv23K8hX8Y0R",
+				         	 1,
+				         	 "backend" ) ;
 						}
-						(new error_())->add( "microservice call failed:\n\nrequest:\n  method: {$request_method}\n  url: {$url}  body: {$request_body}\n  headers: " . implode( "\n    ", $request_headers ) . "\n\nresponse:\n  response_code: {$response_code}\n  response: {$response}\n  curl_errno: {$curl_errno}{$timeout_potentially}",
-	                 	 "qv23K8hX8Y0R",
-			         	 1,
-			         	 "backend" ) ;
 					}
 				}
 			}
