@@ -29,7 +29,7 @@ chmod 660 /dev/shm/web_calls.db
 chown root:www-data /dev/shm/web_calls.db
 
 echo "> web calls"
-nohup bash -c "/var/www/html/include/web_calls.php > /var/log/web_calls.log" &
+nohup bash -c "php /var/www/html/include/web_calls.php > /var/log/web_calls.log" &
 
 echo "> memcached"
 nohup bash -c "memcached /usr/bin/memcached -m 64 -p 11211 -u memcache -l 127.0.0.1" &

@@ -39,6 +39,7 @@ if( php_sapi_name()!="cli" ) {
 
 require_once( "include/error.php" ) ;
 require_once( "include/github.php" ) ;
+require_once( "include/log.php" ) ;
 require_once( "include/memcached.php" ) ;
 require_once( "include/utilities.php" ) ;
 require_once( "include/web_calls.php" ) ;
@@ -752,6 +753,8 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 	interpret_config_as_current_state( $system_config, $microservices_mapping ) ;
 	$system_state = $system_config ; // really just to disambiguate that it was transformed
 
+	(new log_())->add_entry( $system, "state_refresh", $system_state ) ;
+	
 	$system_state = json_encode( $system_state ) ;
 
 	safe_file_put_contents( "/data/{$system}.state.json", $system_state ) ;
@@ -1165,7 +1168,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 		    }
 
 		    if( $is_a_set ) {
-		    	$results[] = (new web_calls_())->synchronous_web_call( $request_url,
+		    	$results[] = (new web_calls_())->execute_web_call( $request_url,
 		                                 				               $request_method,
 		                                 				               $request_headers,
 		                                 				               $request_body ) ;
