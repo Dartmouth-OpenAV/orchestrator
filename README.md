@@ -94,7 +94,7 @@ When LOG_TO_SPLUNK is set to true, these help define where to send the log entri
 
 When using Github to host system configuration files, one would hope you do so in a private repository :). And so this environment variables serves to pass a token with read permission to that repository. Token based authentication isn't the best you can do here, you need to manage accounts, classic tokens are a liability, fine grained tokens expire. But it's quick to setup.
 
-`SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID`, `SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID` & `SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM` {(strings),(**nulls**)}
+`SYSTEM_CONFIGURATIONS_GITHUB_APP_INSTALLATION_ID`, `SYSTEM_CONFIGURATIONS_GITHUB_APP_CLIENT_ID` & `SYSTEM_CONFIGURATIONS_GITHUB_APP_PEM` {(string),(**null**)}
 
 Instead of doing token based authentication into your Github reposity containing system configuration files, you can do [App based authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/about-authentication-with-a-github-app). This is the better method which avoids the shortcomings of tokens, but it's more work to setup. All 3 environment variables need to be defined for this authentication type to work.
 
