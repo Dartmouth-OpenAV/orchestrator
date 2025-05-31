@@ -82,6 +82,14 @@ When set to anything other than empty string or _*_, orchestrator will restrict 
 
 When set to _true_, DNS entries will be preserved on disk as a way to survive beyond reboots. This is meant to optimize resilience in front of outages, but it's not advantageous in all circumstances, and might cause issues with DNS entries changing. DNS entries which were persisted this way are wiped with the API call to "Clear Global Cache".
 
+`LOG_TO_SPLUNK` {_true_, **_false_**}
+
+When set to _true_, various significant pieces of data will be shipped to a Splunk instance. Make sure to specify the following environment variables: LOG_TO_SPLUNK_URL, LOG_TO_SPLUNK_KEY & LOG_TO_SPLUNK_INDEX
+
+`LOG_TO_SPLUNK_URL`, `LOG_TO_SPLUNK_KEY`, `LOG_TO_SPLUNK_INDEX` {(string),(**null**)}
+
+When LOG_TO_SPLUNK is set to true, these help define where to send the log entries.
+
 `SYSTEM_CONFIGURATIONS_GITHUB_TOKEN` {(string),(**null**)}
 
 When using Github to host system configuration files, one would hope you do so in a private repository :). And so this environment variables serves to pass a token with read permission to that repository. Token based authentication isn't the best you can do here, you need to manage accounts, classic tokens are a liability, fine grained tokens expire. But it's quick to setup.
