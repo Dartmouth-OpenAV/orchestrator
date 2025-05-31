@@ -51,6 +51,13 @@ if( php_sapi_name()==="cli" &&
                 echo "> " . date( "Y-m-d H:i:s" ) . "   response code:{$response['code']}\n" ;
                 sqlite_query( "/dev/shm/web_calls.db",
                               "DELETE FROM data WHERE id=:id", [':id'=>$web_call['id']] ) ;
+                if( $response['code']<200 &&
+                    $response['code']>299 ) {
+                    (new error_())->add( "asynchronous web call to request_url={$web_call['request_url']}, request_method={$web_call['request_method']} yielded a response code not in the 200 range",
+                                 "2VJYU71zQ997",
+                                 2,
+                                 "backend" ) ;
+                }
             }
         }
 
