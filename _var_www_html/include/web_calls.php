@@ -68,7 +68,7 @@ if( php_sapi_name()==="cli" &&
         if( time()-$last_cleanup>60 ) {
             echo "\n> " . date( "Y-m-d H:i:s" ) . " cleaning up non inquired\n" ;
             sqlite_query( "/dev/shm/web_calls.db",
-                          "DELETE FROM data WHERE last_inquiry>=datetime('now', '-5 minutes')" ) ;
+                          "DELETE FROM data WHERE last_inquiry<datetime('now', '-5 minutes')" ) ;
             $last_cleanup = time() ;
         }
     }
@@ -106,9 +106,12 @@ class web_calls_ {
     }
 
 
-    function get_decoupled_data( $request_url, $request_method="GET", $request_headers=[], $request_body="" ) {
+    function get_decoupled_data( $request_url, $request_method="GET", $request_headers=[], $request_body="", $refresh_every_x_minutes=1 ) {
+        $response_code = 0 ;
+        $response_body = null ;
         $data = sqlite_query( "/dev/shm/web_calls.db",
-                              "SELECT response_code,
+                              "SELECT id,
+                                      response_code,
                                       response_body FROM data WHERE request_url=:request_url AND
                                                                     request_method=:request_method AND
                                                                     request_headers=:request_headers AND
@@ -116,42 +119,48 @@ class web_calls_ {
                                                                                                   ':request_method'=>$request_method,
                                                                                                   ':request_headers'=>json_encode($request_headers),
                                                                                                   ':request_body'=>$request_body] ) ;
-        if( is_array($data) &&
-            count($data)==0 ) {
-            $data = null ;
-        }
-        if( $data===null ) {
+        if( (is_array($data) && count($data)==0) ||
+             $data===null ) {
+            // $response_code & $response_body remained at default
             sqlite_query( "/dev/shm/web_calls.db",
                           "INSERT INTO data (request_url,
                                              request_method,
                                              request_headers,
                                              request_body,
-                                             keep_refreshed) VALUES (:request_url,
-                                                                     :request_method,
-                                                                     :request_headers,
-                                                                     :request_body,
-                                                                     'true')
+                                             keep_refreshed,
+                                             refresh_every_x_minutes) VALUES (:request_url,
+                                                                              :request_method,
+                                                                              :request_headers,
+                                                                              :request_body,
+                                                                              'true',
+                                                                              :refresh_every_x_minutes)
                                   ON CONFLICT (request_url,
                                                request_method,
                                                request_headers,
                                                request_body) DO UPDATE SET last_inquiry=CURRENT_TIMESTAMP", [':request_url'=>$request_url,
                                                                                                              ':request_method'=>$request_method,
                                                                                                              ':request_headers'=>json_encode($request_headers),
-                                                                                                             ':request_body'=>$request_body] ) ;
+                                                                                                             ':request_body'=>$request_body,
+                                                                                                             ':refresh_every_x_minutes'=>$refresh_every_x_minutes] ) ;
         } else if( is_array($data) &&
                    count($data)==1 &&
                    is_array($data[0]) &&
                    array_key_exists('response_body', $data[0]) ) {
-            $data = $data[0]['response_body'] ;
+            $response_code = $data[0]['response_code'] ;
+            $response_body = $data[0]['response_body'] ;
+
+            sqlite_query( "/dev/shm/web_calls.db",
+                          "UPDATE data SET last_inquiry=CURRENT_TIMESTAMP WHERE id=:id", [':id'=>$data[0]['id']] ) ;
         } else {
+            // $response_code & $response_body remained at default
             (new error_())->add( "invalid web call data gotten from database call: request_url={$request_url}, request_method={$request_method}, request_headers=" . json_encode($request_headers) . ", request_body={$request_body}, which yielded data: " . json_encode($data),
                                  "1g40KdgZZP9j",
                                  2,
                                  "backend" ) ;
-            // failsafe
-            $data = null ;
         }
-        return $data ;
+
+        return ['response_code'=>$response_code,
+                'response_body'=>$response_body] ;
     }
 
 

@@ -1168,15 +1168,33 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 		    }
 
 		    if( $is_a_set ) {
+		    	if( $verbose ) {
+		    		echo ">   is_a_set\n" ;
+		    	}
 		    	$results[] = (new web_calls_())->execute_web_call( $request_url,
-		                                 				               $request_method,
-		                                 				               $request_headers,
-		                                 				               $request_body ) ;
+	                                 				               $request_method,
+	                                 				               $request_headers,
+	                                 				               $request_body ) ;
 		    } else {
-			    $results[] = (new web_calls_())->get_decoupled_data( $request_url,
-		                                 				             $request_method,
-		                                 				             $request_headers,
-		                                 				             $request_body ) ;
+		    	$refresh_every_x_minutes = $microservice_call['refresh_every_x_minutes']??1 ;
+				$expected_status_code               = $microservice_call['expected_status_code']??200 ;
+				$return_if_not_expected_status_code = $microservice_call['return_if_not_expected_status_code']??null ;
+
+		        if( $verbose ) {
+			        echo ">     refresh_every_x_minutes: {$refresh_every_x_minutes}\n" ;
+			        echo ">     expected_status_code: {$expected_status_code}\n" ;
+			        echo ">     return_if_not_expected_status_code: {$return_if_not_expected_status_code}\n" ;
+			    }
+			    $result = (new web_calls_())->get_decoupled_data( $request_url,
+		                                 				          $request_method,
+		                                 				          $request_headers,
+		                                 				          $request_body,
+		                                 				          $refresh_every_x_minutes ) ;
+			    if( $result['response_code']==$expected_status_code ) {
+				    $results[] = $result['response_body'] ;
+				} else {
+					$results[] = $return_if_not_expected_status_code ;
+				}
 			}
 		} else {
 			// microservice call
