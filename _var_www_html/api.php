@@ -661,7 +661,8 @@ function cli_refresh_system_config( $system ) {
 		return false ;
 	}
 
-	process_system_config( $content, ['system'=>$system] ) ;
+	process_system_config( $content, ['system'=>$system,
+									  'version'=>get_version(true)] ) ;
 
 	$retrieve_initial_system_state = false ;
 	if( !file_exists("/data/{$system}.config.json") ) {
@@ -1700,12 +1701,17 @@ function close_with_500( $message ) {
 
 
 function process_system_config( &$content, $variables ) {
-	// vestige from earlier implementation: the hardware section of a config is irrelevant to operation, and shouldn't be exposed
+	// sections which should not be part of the state (which gets passed around to various parties)
 	$content = json_decode( $content, true ) ;
-	if( isset($content[array_keys($content)[0]]['hardware']) ) {
-		unset( $content[array_keys($content)[0]]['hardware'] ) ;
+	if( isset($content['remove_top_level_sections']) &&
+		is_array($content['remove_top_level_sections']) ) {
+		foreach( $content['remove_top_level_sections'] as $remove_top_level_section ) {
+			if( isset($content[$remove_top_level_section]) ) {
+				unset( $content[$remove_top_level_section] ) ;
+			}
+		}
+		unset( $content['remove_top_level_sections'] ) ;
 	}
-
 	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
 
 	$matchess = [] ;
