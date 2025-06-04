@@ -29,9 +29,9 @@ if( php_sapi_name()==="cli" &&
                 sqlite_query( "/dev/shm/web_calls.db",
                               "UPDATE data SET response_code=:response_code,
                                                response_body=:response_body,
-                                               last_refresh=CURRENT_TIMESTAMP WHERE id=:id", [':response_code'=>$response['code'],
-                                                                                              ':response_body'=>$response['body'],
-                                                                                              ':id'=>$web_call['id']] ) ;
+                                               last_refresh=(datetime('now', 'localtime')) WHERE id=:id", [':response_code'=>$response['code'],
+                                                                                                           ':response_body'=>$response['body'],
+                                                                                                           ':id'=>$web_call['id']] ) ;
             }
         }
 
@@ -99,10 +99,10 @@ class web_calls_ {
                               ON CONFLICT (request_url,
                                            request_method,
                                            request_headers,
-                                           request_body) DO UPDATE SET last_inquiry=CURRENT_TIMESTAMP", [':request_url'=>$request_url,
-                                                                                                         ':request_method'=>$request_method,
-                                                                                                         ':request_headers'=>json_encode($request_headers),
-                                                                                                         ':request_body'=>$request_body] ) ;
+                                           request_body) DO UPDATE SET last_inquiry=(datetime('now', 'localtime'))", [':request_url'=>$request_url,
+                                                                                                                      ':request_method'=>$request_method,
+                                                                                                                      ':request_headers'=>json_encode($request_headers),
+                                                                                                                      ':request_body'=>$request_body] ) ;
     }
 
 
@@ -137,11 +137,11 @@ class web_calls_ {
                                   ON CONFLICT (request_url,
                                                request_method,
                                                request_headers,
-                                               request_body) DO UPDATE SET last_inquiry=CURRENT_TIMESTAMP", [':request_url'=>$request_url,
-                                                                                                             ':request_method'=>$request_method,
-                                                                                                             ':request_headers'=>json_encode($request_headers),
-                                                                                                             ':request_body'=>$request_body,
-                                                                                                             ':refresh_every_x_minutes'=>$refresh_every_x_minutes] ) ;
+                                               request_body) DO UPDATE SET last_inquiry=(datetime('now', 'localtime'))", [':request_url'=>$request_url,
+                                                                                                                          ':request_method'=>$request_method,
+                                                                                                                          ':request_headers'=>json_encode($request_headers),
+                                                                                                                          ':request_body'=>$request_body,
+                                                                                                                          ':refresh_every_x_minutes'=>$refresh_every_x_minutes] ) ;
         } else if( is_array($data) &&
                    count($data)==1 &&
                    is_array($data[0]) &&
@@ -150,7 +150,7 @@ class web_calls_ {
             $response_body = $data[0]['response_body'] ;
 
             sqlite_query( "/dev/shm/web_calls.db",
-                          "UPDATE data SET last_inquiry=CURRENT_TIMESTAMP WHERE id=:id", [':id'=>$data[0]['id']] ) ;
+                          "UPDATE data SET last_inquiry=(datetime('now', 'localtime')) WHERE id=:id", [':id'=>$data[0]['id']] ) ;
         } else {
             // $response_code & $response_body remained at default
             (new error_())->add( "invalid web call data gotten from database call: request_url={$request_url}, request_method={$request_method}, request_headers=" . json_encode($request_headers) . ", request_body={$request_body}, which yielded data: " . json_encode($data),

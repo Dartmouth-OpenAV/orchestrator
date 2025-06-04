@@ -5,6 +5,7 @@ chown www-data:www-data /data
 chmod 770 /data
 
 echo "> sqlite"
+# web calls
 sqlite3 /dev/shm/web_calls.db << EOF
 CREATE TABLE data (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,19 +15,37 @@ CREATE TABLE data (
   request_body TEXT,
   response_code TEXT,
   response_body TEXT,
-  added_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  last_inquiry TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  added_timestamp TEXT DEFAULT (datetime('now', 'localtime')),
+  last_inquiry TEXT DEFAULT (datetime('now', 'localtime')),
   keep_refreshed TEXT DEFAULT 'false',
   refresh_every_x_minutes INTEGER DEFAULT 1,
-  last_refresh TIMESTAMP
+  last_refresh TEXT
 );
-
 CREATE UNIQUE INDEX idx_calls_get_data ON data(request_url,request_method,request_headers,request_body);
-CREATE INDEX idx_calls_which_to_process ON data(keep_refreshed,in_process);
+CREATE INDEX idx_calls_which_to_process ON data(keep_refreshed);
 EOF
-
 chmod 660 /dev/shm/web_calls.db
 chown root:www-data /dev/shm/web_calls.db
+
+# errors
+sqlite3 /dev/shm/errors.db << EOF
+CREATE TABLE data (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  message TEXT,
+  code TEXT,
+  severity INT,
+  tags TEXT,
+  source TEXT,
+  system TEXT,
+  time_stamp TEXT DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX idx_code ON data(code);
+CREATE INDEX idx_tags ON data(tags);
+CREATE INDEX idx_source ON data(source);
+CREATE INDEX idx_system ON data(system);
+EOF
+chmod 660 /dev/shm/errors.db
+chown root:www-data /dev/shm/errors.db
 
 echo "> web calls"
 nohup bash -c "php /var/www/html/include/web_calls.php > /var/log/web_calls.log" &

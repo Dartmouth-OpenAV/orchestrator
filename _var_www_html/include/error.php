@@ -8,8 +8,8 @@
 //
 
 
+require_once( "sqlite.php" ) ;
 require_once( "utilities.php" ) ;
-
 
 
 
@@ -17,59 +17,115 @@ class error_ {
 
 
     // variable declaration
-    private $error_log_file ;
     private $error_tolerance_cache_dir ;
     private $error_retention_hours ;
 
 
     // constructor
     function __construct() {
-		$this->error_log_file = "/data/errors.json" ;
 		$this->error_tolerance_cache_dir = "/data" ;
 		$this->error_retention_hours = 24 ;
 	}
 
 
 	function list( $code=null, $severity=null, $tags=null, $source=null, $system=null  ) {
-		$errors = [] ;
-		if( file_exists($this->error_log_file) ) {
-			$possible_new_errors = json_decode( safe_file_get_contents($this->error_log_file), true ) ;
-			if( is_array($possible_new_errors) ) {
-				$errors = $possible_new_errors ;
-			}
+		$this->remove_obsolete() ;
+
+		$query = "" ;
+		$query_params = [] ;
+		if( $code!==null || $severity!==null || $tags!==null || $source!==null || $system!==null ) {
+			$query .= " WHERE" ;
 		}
-
-		$this->remove_obsolete( $errors ) ;
-
-		$errors_kept = [] ;
-		foreach( $errors as $error ) {
-			if( ($code===null || ($code!==null && $code==$error['code'])) &&
-				($severity===null || ($severity!==null && $severity==$error['severity'])) &&
-				($source===null || ($source!==null && $source==$error['source'])) &&
-				($system===null || ($system!==null && $system==$error['system'])) ) {
-				// tags is a little more involved
-				$tags_match = true ;
-				if( $tags!==null ) {
-					if( is_string($tags) ) {
-						$tags = [$tags] ;
-					} else if( !is_array($tags) ) {
-						$tags = [] ;
-					}
-				}
+		$need_and = false ;
+		if( $code!==null ) {
+			if( $need_and ) {
+				$query .= " AND" ;
+			}
+			$query .= " code=:code" ;
+			$query_params[':code'] = $code ;
+			$need_and = true ;
+		}
+		if( $severity!==null ) {
+			if( $need_and ) {
+				$query .= " AND" ;
+			}
+			$query .= " severity=:severity" ;
+			$query_params[':severity'] = $severity ;
+			$need_and = true ;
+		}
+		if( $tags!==null ) {
+			if( $need_and ) {
+				$query .= " AND" ;
+			}
+			// tags are a little more involved
+			if( is_string($tags) ) {
+				$tags = [$tags] ;
+			}
+			$query .= "(" ;
+			if( is_array($tags) ) {
+				$need_or = false ;
 				foreach( $tags as $tag ) {
-					if( !in_array($tag, $error['tags']) ) {
-						$tags_match = false ;
-						break ;
+					if( $need_or ) {
+						$query .= " OR" ;
 					}
-				}
 
-				if( $tags_match ) {
-					$errors_kept[] = $error ;
+					$prepared_variable_name = md5( $tag ) . "1" ;
+					if( !in_array(":{$prepared_variable_name}", $query_params) ) {
+						$query .= " tags=:{$prepared_variable_name}" ;
+						$query_params[":{$prepared_variable_name}"] = $tag ;
+
+						$query .= " OR" ;
+
+						$prepared_variable_name = md5( $tag ) . "2" ;
+						$query .= " tags LIKE :{$prepared_variable_name}" ;
+						$query_params[":{$prepared_variable_name}"] = "$tag|%" ;
+
+						$query .= " OR" ;
+
+						$prepared_variable_name = md5( $tag ) . "3" ;
+						$query .= " tags LIKE :{$prepared_variable_name}" ;
+						$query_params[":{$prepared_variable_name}"] = "%|$tag" ;
+
+						$query .= " OR" ;
+
+						$prepared_variable_name = md5( $tag ) . "4" ;
+						$query .= " tags LIKE :{$prepared_variable_name}" ;
+						$query_params[":{$prepared_variable_name}"] = "%|$tag|%" ;
+					}
+					
+					$need_or = true ;
 				}
 			}
+			$query .= ")" ;
+			$need_and = true ;
+		}
+		if( $source!==null ) {
+			if( $need_and ) {
+				$query .= " AND" ;
+			}
+			$query .= " source=:source" ;
+			$query_params[':source'] = $source ;
+			$need_and = true ;
+		}
+		if( $system!==null ) {
+			if( $need_and ) {
+				$query .= " AND" ;
+			}
+			$query .= " system=:system" ;
+			$query_params[':system'] = $system ;
+			$need_and = true ;
 		}
 
-		return $errors_kept ;
+		$errors = sqlite_query( "/dev/shm/errors.db",
+                                "SELECT message,
+                      		            code,
+                      		            severity,
+                      		            tags,
+                      		            source,
+                      		            system,
+                      		            time_stamp FROM data{$query}", $query_params ) ;
+
+		return $errors ;
 	}
 
 
@@ -84,6 +140,7 @@ class error_ {
 		} else {
 			sort( $tags ) ;
 		}
+		$tags = implode( "|", $tags ) ;
 		
 		if( $tolerance>0 ) {
 			$error_hash = md5( $code . $severity . implode("|", $tags) . $source . $system ) ; // the message isn't included as it might contain fluctuating details
@@ -128,50 +185,41 @@ class error_ {
 
 	    $time_stamp = date( "Y-m-d H:i:s" ) ;
 
-	    $new_error = [
-	    	'time_stamp'=>$time_stamp,
-	    	'message'=>$message,
-	    	'code'=>$code,
-	    	'trace'=>$trace,
-	    	'severity'=>$severity,
-	    	'tags'=>$tags,
-	    	'source'=>$source,
-	    	'system'=>$system
-	    ] ;
+	    // $new_error = [
+	    // 	'message'=>$message,
+	    // 	'code'=>$code,
+	    // 	'trace'=>$trace,
+	    // 	'severity'=>$severity,
+	    // 	'tags'=>$tags,
+	    // 	'source'=>$source,
+	    // 	'system'=>$system
+	    // ] ;
 
-		$errors = [] ;
-		if( file_exists($this->error_log_file) ) {
-			$possible_new_errors = json_decode( safe_file_get_contents($this->error_log_file), true ) ;
-			if( is_array($possible_new_errors) ) {
-				$errors = $possible_new_errors ;
-			}
-		}
-		$errors[] = $new_error ;
+		sqlite_query( "/dev/shm/errors.db",
+					  "INSERT INTO data (message,
+					  					 code,
+					  					 severity,
+					  					 tags,
+					  					 source,
+					  					 system) VALUES (:message,
+					  					 				 :code,
+					  					 				 :severity,
+					  					 				 :tags,
+					  					 				 :source,
+					  					 				 :system)", [':message'=>$message,
+											  					     ':code'=>$code,
+											  					     ':severity'=>$severity,
+											  					     ':tags'=>$tags,
+											  					     ':source'=>$source,
+											  					     ':system'=>$system] ) ;
 
-		$this->remove_obsolete( $errors ) ;
-		
-		safe_file_put_contents( $this->error_log_file, json_encode($errors) ) ;
+		$this->remove_obsolete() ;
 	}
 
 
-	function remove_obsolete( &$errors ) {
-		// obsoletion
-		$indices_to_remove = [] ;
-		$now = time() ;
-		for( $i=0 ; $i<count($errors) ; $i++ ) {
-			if( !(isset($errors[$i]['time_stamp']) &&
-				  ($now-strtotime($errors[$i]['time_stamp']))<($this->error_retention_hours*24*60*60)) ) {
-				$indices_to_remove[] = $i ;
-			}
-		}
-		if( count($indices_to_remove)>0 ) {
-			foreach( $indices_to_remove as $index_to_remove ) {
-				unset( $errors[$index_to_remove] ) ;
-			}
-			$errors = array_values( $errors ) ; // pack to fill index gaps
-		}
-
-		// no need to return, passed by reference
+	function remove_obsolete() {
+		sqlite_query( "/dev/shm/errors.db",
+					  "DELETE FROM data WHERE time_stamp<datetime('now', '-{$this->error_retention_hours} hours')", [] ) ;
 	}
 }
 
