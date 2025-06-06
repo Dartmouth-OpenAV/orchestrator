@@ -115,7 +115,8 @@ class github_ {
 		(new error_())->add( "Unable to refresh access token with Github with curl_errno: {$curl_errno}, response_code: {$response_code}, and response:\n{$response}",
 			                 "Opf7E2euKe13",
 					         3,
-					         "backend" ) ;
+					         ["backend","github"],
+					         "orchestrator" ) ;
 
 		return false ;
 	}
@@ -221,7 +222,8 @@ class github_ {
 				(new error_())->add( "Unable to make API call with Github with curl_errno: {$curl_errno}, response_code: {$response_code}, and response:\n{$response}",
 					                 "aEf8D6b3wnQB",
 							         3,
-							         "backend" ) ;
+							         ["backend","github"],
+						             "orchestrator" ) ;
 				if( $retry_count>0 ) {
 					sleep( 1 ) ;
 				}

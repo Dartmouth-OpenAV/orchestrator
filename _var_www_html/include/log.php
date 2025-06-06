@@ -30,7 +30,8 @@ class log_ {
                 (new error_())->add( "I have LOG_TO_SPLUNK environment variable set to \"true\" but something is wrong with the subsequently needed LOG_TO_SPLUNK_* variables",
                                      "52Tf7ejz9O0t",
                                      2,
-                                     "backend" ) ;
+                                     ["backend"],
+                                     "orchestrator" ) ;
             }
         }
     }

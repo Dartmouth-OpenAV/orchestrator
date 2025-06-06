@@ -40,7 +40,8 @@ class memcached_ {
             (new error_())->add( "unable to delete entry with key: {$key} from memcached",
                                  "nI5539j0ANyN",
                                  3,
-                                 "backend" ) ;
+                                 ["backend","memcached"],
+                                 "orchestrator" ) ;
         }
 
         return false ;
@@ -63,7 +64,8 @@ class memcached_ {
             (new error_())->add( "unable to retrieve memcached key {$key} with result_code {$result_code}",
                                  "pEfVfVT4Iy06",
                                  3,
-                                 "backend" ) ;
+                                 ["backend","memcached"],
+                                 "orchestrator" ) ;
         }
 
         return null ;
@@ -88,7 +90,8 @@ class memcached_ {
             (new error_())->add( "unable to store memcached key {$key} with result_code {$result_code}",
                                  "pEfVfVT4Iy06",
                                  3,
-                                 "backend" ) ;
+                                 ["backend","memcached"],
+                                 "orchestrator" ) ;
             return false ;
         }
 
@@ -103,7 +106,8 @@ class memcached_ {
             (new error_())->add( "unable to flush memcached",
                                  "E6v45KtxfeMY",
                                  3,
-                                 "backend" ) ;
+                                 ["backend","memcached"],
+                                 "orchestrator" ) ;
             return false ;
         }
 

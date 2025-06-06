@@ -54,9 +54,10 @@ if( php_sapi_name()==="cli" &&
                 if( $response['code']<200 &&
                     $response['code']>299 ) {
                     (new error_())->add( "asynchronous web call to request_url={$web_call['request_url']}, request_method={$web_call['request_method']} yielded a response code not in the 200 range",
-                                 "2VJYU71zQ997",
-                                 2,
-                                 "backend" ) ;
+                                         "2VJYU71zQ997",
+                                         2,
+                                         ["backend","web_calls"],
+                                         "orchestrator" ) ;
                 }
             }
         }
@@ -156,7 +157,8 @@ class web_calls_ {
             (new error_())->add( "invalid web call data gotten from database call: request_url={$request_url}, request_method={$request_method}, request_headers=" . json_encode($request_headers) . ", request_body={$request_body}, which yielded data: " . json_encode($data),
                                  "1g40KdgZZP9j",
                                  2,
-                                 "backend" ) ;
+                                 ["backend"],
+                                 "orchestrator" ) ;
         }
 
         return ['response_code'=>$response_code,

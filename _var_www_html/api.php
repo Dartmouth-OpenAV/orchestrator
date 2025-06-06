@@ -65,7 +65,8 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 		(new error_())->add( "Missing /system_configurations volume mount",
 		                     "Ow5AID737SLX",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator" ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration lXl01G4c3AOz" ;
 			exit( 1 ) ;
@@ -96,7 +97,8 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 		(new error_())->add( "Missing environment variable: {$required_environment_variable}",
 		                     "cF30D09PLe8Q",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator" ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration 7s7tkkwi4A0x" ;
 			exit( 1 ) ;
@@ -113,9 +115,10 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']) &&
 	!(isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 	  getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true") ) {
 	(new error_())->add( "Environment variable: SYSTEM_CONFIGURATIONS_INSTANT_REFRESH being set to true requires environment variable SYSTEM_CONFIGURATIONS_VIA_VOLUME being set to true as well",
-		                     "7w6PMmT2tKiB",
-				             1,
-				             "backend" ) ;
+		                 "7w6PMmT2tKiB",
+				         1,
+				         ["backend"],
+				         "orchestrator" ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration DURM8ib6m0HD" ;
 			exit( 1 ) ;
@@ -132,7 +135,8 @@ if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 		(new error_())->add( "Missing /microservices.json file",
 		                     "xmL0vDH5E10m",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator" ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration Ck98XG1SKeC3" ;
 			exit( 1 ) ;
@@ -326,7 +330,8 @@ function route_function_if_authorized( $function_name ) {
 								(new error_())->add( "invalid client match dns_regex: {$client['dns_regex']}, in authorization rule:\n" . var_export( $rule, true ),
 								                     "beN52Bs1hV1R",
 										             2,
-										             "backend" ) ;
+										             ["backend"],
+										             "orchestrator" ) ;
 							}
 						} else if( $client_match_method=="cidr" ) {
 							// IP CIDR authorization
@@ -343,7 +348,8 @@ function route_function_if_authorized( $function_name ) {
 								(new error_())->add( "invalid client match cidr: {$client['cidr']}, in authorization rule:\n" . var_export( $rule, true ),
 								                     "4aB73RfXvNKg",
 										             2,
-										             "backend" ) ;
+										             ["backend"],
+										             "orchestrator" ) ;
 							}
 						} else if( $client_match_method=="token" ) {
 							// Token authorization
@@ -358,19 +364,22 @@ function route_function_if_authorized( $function_name ) {
 								(new error_())->add( "invalid client match token: {$client['token']}, in authorization rule:\n" . var_export( $rule, true ),
 								                     "kV1676Y24GkF",
 										             2,
-										             "backend" ) ;
+										             ["backend"],
+										             "orchestrator" ) ;
 							}
 						} else {
 							(new error_())->add( "invalid client match method: {$client_match_method}, in authorization rule:\n" . var_export( $rule, true ),
 							                     "tQd16MK34nuC",
 									             2,
-									             "backend" ) ;
+									             ["backend"],
+									             "orchestrator" ) ;
 						}
 					} else {
 						(new error_())->add( "invalid client in authorization rule:\n" . var_export( $rule, true ),
 						                     "0Xsn41TJKzam",
 								             2,
-								             "backend" ) ;
+								             ["backend"],
+								             "orchestrator" ) ;
 					}
 				}
 
@@ -385,7 +394,8 @@ function route_function_if_authorized( $function_name ) {
 				(new error_())->add( "invalid authorization rule:\n" . var_export( $rule, true ) . "\n\nmissing 'clients', 'path', or 'methods'",
 				                     "Nq207jRyWSjr",
 						             2,
-						             "backend" ) ;
+						             ["backend"],
+						             "orchestrator" ) ;
 			}
 		}
 	}
@@ -422,7 +432,9 @@ function system_config_and_state_refresh( $system ) {
 			(new error_())->add( "system config refresh lock file older than 2 minutes for system: {$system}",
 			                     "0qD4Cmk5K23j",
 					             3,
-					             "backend" ) ;
+					             ["backend"],
+					             "orchestrator",
+					             $system ) ;
 			$refresh = true ;
 		}
 		if( $refresh ) {
@@ -443,7 +455,9 @@ function system_config_and_state_refresh( $system ) {
 				(new error_())->add( "system config refresh lock file (/data/{$system}.state.json.lock) older than 2 minutes for system: {$system}",
 				                     "Kv06Tl8eyGS2",
 						             3,
-						             "backend" ) ;
+						             ["backend"],
+						             "orchestrator",
+						             $system ) ;
 				$refresh = true ;
 			}
 		    
@@ -465,7 +479,9 @@ function system_config_and_state_refresh( $system ) {
 			(new error_())->add( "system state refresh lock file (/data/{$system}.state.lock) older than 1 minute for system: {$system}",
 			                     "8NJDx5o4D583",
 					             3,
-					             "backend" ) ;
+					             ["backend"],
+					             "orchestrator",
+					             $system ) ;
 			$refresh = true ;
 		}
 		if( $refresh ) {
@@ -485,7 +501,9 @@ function system_config_and_state_refresh( $system ) {
 				(new error_())->add( "system state refresh lock file (/data/{$system}.state.lock) older than 1 minute for system: {$system}",
 				                     "6RYeBYfVjW42",
 						             2,
-						             "backend" ) ;
+						             ["backend"],
+						             "orchestrator",
+						             $system ) ;
 				$refresh = true ;
 			}
 		    
@@ -514,7 +532,9 @@ function get_system_state() {
 		(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
 		                     "A80ta0eX6fsL",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		close_with_500( "server error" ) ;
 	}
 
@@ -547,7 +567,9 @@ function update_system_state() {
 		(new error_())->add( "system config file (/data/{$system}.config.json) should exist",
 		                     "8Ov670d98yRl",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		close_with_500( "server error" ) ;
 	}
 	$system_config = json_decode( safe_file_get_contents("/data/{$system}.config.json"), true ) ;
@@ -555,7 +577,9 @@ function update_system_state() {
 		(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
 		                     "poeUBK56197c",
 				             1,
-				             "backend" ) ;
+				             ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		close_with_500( "server error" ) ;
 	}
 	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
@@ -583,7 +607,9 @@ function update_system_state() {
 	// 	(new error_())->add( "system state file (/data/{$system}.state.json) should exist",
 	// 	                     "poeUBK56197c",
 	// 			             1,
-	// 			             "backend" ) ;
+	// 			             ["backend"],
+	//			             "orchestrator",
+	//			             $system ) ;
 	// 	close_with_500( "server error" ) ;
 	// }
 	// $system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
@@ -637,12 +663,16 @@ function cli_refresh_system_config( $system ) {
 			(new error_())->add( "unable to refresh config for system: {$system}, I have a previous copy at least",
 				                 "Ie5N0P4PZ9kr",
 						         3,
-						         "backend" ) ;
+						         ["backend"],
+					             "orchestrator",
+					             $system ) ;
 		} else {
 			(new error_())->add( "unable to refresh config for system: {$system}",
 				                 "V73KUz85ep0C",
 						         1,
-						         "backend" ) ;
+						         ["backend"],
+					             "orchestrator",
+					             $system ) ;
 		}
 		return false ;
 	}
@@ -652,12 +682,16 @@ function cli_refresh_system_config( $system ) {
 			(new error_())->add( "config for system: {$system} is invalid, I have a previous copy at least",
 				                 "T3o5i84TVGV8",
 						         3,
-						         "backend" ) ;
+						         ["configuration"],
+					             "orchestrator",
+					             $system ) ;
 		} else {
 			(new error_())->add( "config for system: {$system} is invalid",
 				                 "6C0x23n3hVkS",
 						         1,
-						         "backend" ) ;
+						         ["configuration"],
+					             "orchestrator",
+					             $system ) ;
 		}
 		return false ;
 	}
@@ -696,7 +730,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 		(new error_())->add( "config for system: {$system} doesn't exist at the time of state refresh",
 			                 "B9X9cwA7ls4f",
 					         1,
-					         "backend" ) ;
+					         ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
@@ -706,7 +742,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 		(new error_())->add( "config for system: {$system} doesn't parse at the time of state refresh",
 			                 "4Ikj18m28kPf",
 					         1,
-					         "backend" ) ;
+					        ["configuration"],
+				             "orchestrator",
+				             $system ) ;
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
@@ -727,7 +765,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 			(new error_())->add( "microservice(s): " . implode(", ", $microservices_missing) . " are not defined on orchestrator",
 			                 	 "86G3OsE55Qr4",
 					         	 1,
-					         	 "backend" ) ;
+					         	 ["backend"],
+					             "orchestrator",
+					             $system ) ;
 			@unlink( "/data/{$system}.state.json.lock" ) ;
 			return false ;
 		}
@@ -756,7 +796,9 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 		(new error_())->add( "state update file: {$microservice_sequences_filename} doesn't exist",
 			                 "fN8P05A6F8St",
 					         1,
-					         "backend" ) ;
+					         ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		return false ;
 	}
 	$microservice_sequences = safe_file_get_contents( $microservice_sequences_filename ) ;
@@ -765,7 +807,9 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 		(new error_())->add( "microservice sequences in file: {$microservice_sequences_filename} doesn't parse",
 			                 "Ej941SabB3rD",
 					         1,
-					         "backend" ) ;
+					         ["backend"],
+				             "orchestrator",
+				             $system ) ;
 		return false ;
 	}
 
@@ -858,7 +902,8 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 		    			(new error_())->add( "get_process function: {$system_config['get_process']['function_name']} is not defined",
 				                             "ORji83l6j6Xt",
 				                             2,
-				                             "backend" ) ;
+				                             ["backend","configuration"],
+								             "orchestrator" ) ;
 		    			// to backend information from percolating up to the client
 		    			$system_config = null ;
 					} else {
@@ -915,7 +960,8 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 				(new error_())->add( "get_process is set to an unknown type, it needs to either be an array or a string",
 		                             "D3n657jcS8k4",
 		                             2,
-		                             "backend" ) ;
+		                             ["backend","configuration"],
+								     "orchestrator" ) ;
     			// to backend information from percolating up to the client
     			$system_config = null ;
 			}
@@ -943,7 +989,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
 					                 	 "7ND4dL6XCmus",
 							         	 2,
-							         	 "backend" ) ;
+							         	 ["backend"],
+							             "orchestrator" ) ;
 					$error = "invalid update" ;
 				}
 			}
@@ -951,7 +998,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
 			                 	 "xetOz4m4J0t2",
 					         	 2,
-					         	 "backend" ) ;
+					         	 ["backend"],
+					             "orchestrator" ) ;
 			$error = "invalid update" ;
 		}
 	} else {
@@ -966,7 +1014,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
 						                 	     "w1ZqaCb014Th",
 								         	     2,
-								         	     "backend" ) ;
+								         	     ["backend","configuration"],
+									             "orchestrator" ) ;
 			    		} else {
 					    	$variables = call_user_func( $system_config['set_process'], $update ) ;
 					    }
@@ -977,7 +1026,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
 						                 	     "2cz9L2ZhTOzP",
 								         	     2,
-								         	     "backend" ) ;
+								         	     ["backend","configuration"],
+									             "orchestrator" ) ;
 						} else {
 							$arguments = ['value'=>$update] ;
 							if( isset($system_config['set_process']['function_arguments']) ) {
@@ -1000,12 +1050,14 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 				    		(new error_())->add( "unknown type for set_process key",
 						                 	     "aU8BoySsf80A",
 								         	     2,
-								         	     "backend" ) ;
+								         	     ["backend","configuration"],
+									             "orchestrator" ) ;
 				    	} else if( !array_key_exists($value_key, $system_config['set_process']) ) {
 				    		(new error_())->add( "unhandled value key for set_process",
 						                 	     "oUNna7FYk98j",
 								         	     2,
-								         	     "backend" ) ;
+								         	     ["backend","configuration"],
+									             "orchestrator" ) ;
 				    	} else {
 				    		foreach( $system_config['set_process'][$value_key] as $variable_name=>$variable_value ) {
 				    			$variables[$variable_name] = $variable_value ;
@@ -1016,7 +1068,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			    	(new error_())->add( "unknown type for set_process",
 				                 	     "uxDQ8Rp9L224",
 						         	     2,
-						         	     "backend" ) ;
+						         	     ["backend","configuration"],
+							             "orchestrator" ) ;
 			    }
 		    }
 		    if( count($variables)>0 ) {
@@ -1033,7 +1086,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 							(new error_())->add( "variable: {$match} not found in computed variables:\n" . var_export( $variables, true ),
 						                 	     "16W5p2y3pI2R",
 								         	     3,
-								         	     "backend" ) ;
+								         	     ["backend","configuration"],
+									             "orchestrator" ) ;
 						}
 					}
 				}
@@ -1056,7 +1110,8 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\nis trying to set a variable that is not settable in system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT),
 			                 	 "I5h05S2P7yQX",
 					         	 2,
-					         	 "backend" ) ;
+					         	 ["backend","configuration"],
+					             "orchestrator" ) ;
 			$error = "invalid update" ;
 		}
 	}
@@ -1120,7 +1175,8 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 		(new error_())->add( "invalid microservice sequence: " . var_export($microservice_sequence, true),
                              "i61Mn7v74J9P",
                              2,
-                             "config" ) ;
+                             ["backend","configuration"],
+				              "orchestrator" ) ;
         return $results ; // which should only be [] at this point
 	}
 	foreach( $microservice_sequence as $microservice_call ) {
@@ -1266,7 +1322,8 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 	            (new error_())->add( "invalid microservice call: {$microservice_call}",
 	                                 "EQr87gl3YCKm",
 	                                 2,
-	                                 "config" ) ;
+	                                 ["backend","configuration"],
+						             "orchestrator" ) ;
 	            echo ">   invalid microservice call: {$microservice_call}\n" ;
 	            $proceed_with_call = false ;
 	            $results[] = null ;
@@ -1281,7 +1338,8 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 	            (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
 	                                 "fN45HdtBEv8T",
 	                                 2,
-	                                 "backend" ) ;
+	                                 ["backend"],
+						             "orchestrator" ) ;
 	            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
 	            $proceed_with_call = false ;
 	            $results[] = null ;
@@ -1407,7 +1465,8 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 							(new error_())->add( "microservice call failed:\n\nrequest:\n  method: {$request_method}\n  url: {$url}  body: {$request_body}\n  headers: " . implode( "\n    ", $request_headers ) . "\n\nresponse:\n  response_code: {$response_code}\n  response: {$response}\n  curl_errno: {$curl_errno}{$timeout_potentially}",
 		                 	 "qv23K8hX8Y0R",
 				         	 1,
-				         	 "backend" ) ;
+				         	 ["backend","microservice"],
+				              "orchestrator" ) ;
 						}
 					}
 				}
@@ -1615,12 +1674,14 @@ function cli_gather_microservice_errors() {
 					                              "microservice"],
 					                              $microservice ) ;
 						} else {
-							(new error_())->add( "{$time_stamp}: {$message}" ,
+							(new error_())->add( $message,
 					                             "GG68bGF98wyT",
 					                             3,
 					                             ["backend",
 					                              "microservice"],
-					                              $microservice ) ;
+					                              $microservice,
+					                              0,
+					                              $time_stamp ) ;
 						}
 					}
 				}
@@ -1786,7 +1847,8 @@ function get_microservices_mapping() {
 	        (new error_())->add( "missing known microservices file",
 	                             "Ju8R9t0CtH98",
 	                             2,
-	                             "backend" ) ;
+	                             ["backend"],
+	                             "orchestrator" ) ;
 	        return false ;
 	    }
 	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
@@ -1795,7 +1857,8 @@ function get_microservices_mapping() {
 	        (new error_())->add( "invalid known microservices file",
 	                             "4Dj67wmWDq10",
 	                             2,
-	                             "backend" ) ;
+	                             ["backend"],
+	                             "orchestrator" ) ;
 	        return false ;
 	    }
 	}
@@ -1849,7 +1912,8 @@ function process_system_config( &$content, $variables ) {
 				(new error_())->add( "global variable: {$match} not known in:\n" . var_export( $variables, true ),
 			                 	     "MfA63ot4B7Cp",
 					         	     1,
-					         	     "backend" ) ;
+					         	     ["backend"],
+					         	     "orchestrator" ) ;
 			}
 		}
 	}
@@ -1896,7 +1960,8 @@ function resolve_dns( $fqdn ) {
 			(new error_())->add( "unreachable point looking up DNS for fqdn: {$fqdn}",
 			                     "M90ydS7Pdxpk",
 					             2,
-					             "backend" ) ;
+					             ["backend"],
+					             "orchestrator" ) ;
 			return $fqdn ;
 		} else {
 			return gethostbyname( $fqdn ) ;
