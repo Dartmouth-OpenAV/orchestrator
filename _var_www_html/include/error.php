@@ -129,7 +129,7 @@ class error_ {
 	}
 
 
-	function add( $message, $code, $severity, $tags=[], $source=null, $system=null, $tolerance=0 ) { // tolerance is count over last hour
+	function add( $message, $code, $severity, $tags=[], $source=null, $system=null, $tolerance=0, $time_stamp_override=false ) { // tolerance is count over last hour
 		if( !is_array($tags) ) {
 			// trying to be nice
 			if( is_string($tags) ) {
@@ -185,33 +185,46 @@ class error_ {
 
 	    $time_stamp = date( "Y-m-d H:i:s" ) ;
 
-	    // $new_error = [
-	    // 	'message'=>$message,
-	    // 	'code'=>$code,
-	    // 	'trace'=>$trace,
-	    // 	'severity'=>$severity,
-	    // 	'tags'=>$tags,
-	    // 	'source'=>$source,
-	    // 	'system'=>$system
-	    // ] ;
+	    if( $time_stamp_override!==false ) {
+	    	if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $time_stamp_override) &&
+			    !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,9}/', $time_stamp_override) ) {
+	    		$time_stamp_override = false ;
+	    	}
+	    }
+
+	    $query = "INSERT INTO data (message,
+					  			    code,
+					  			    severity,
+					  			    tags,
+					  			    source,
+					  			    system" ;
+		if( $time_stamp_override!==false ) {
+			$query .= ",time_stamp" ;
+		}
+		$query .= ") VALUES (:message,
+					  		 :code,
+					  		 :severity,
+					  		 :tags,
+					  		 :source,
+					  		 :system" ;
+		if( $time_stamp_override!==false ) {
+			$query .= ",:time_stamp" ;
+		}
+		$query .= ")" ;
+
+		$query_params = [':message'=>$message,
+						 ':code'=>$code,
+						 ':severity'=>$severity,
+						 ':tags'=>$tags,
+						 ':source'=>$source,
+						 ':system'=>$system] ;
+		if( $time_stamp_override!==false ) {
+			$query_params[':time_stamp'] = $time_stamp_override ;
+		}
 
 		sqlite_query( "/dev/shm/errors.db",
-					  "INSERT INTO data (message,
-					  					 code,
-					  					 severity,
-					  					 tags,
-					  					 source,
-					  					 system) VALUES (:message,
-					  					 				 :code,
-					  					 				 :severity,
-					  					 				 :tags,
-					  					 				 :source,
-					  					 				 :system)", [':message'=>$message,
-											  					     ':code'=>$code,
-											  					     ':severity'=>$severity,
-											  					     ':tags'=>$tags,
-											  					     ':source'=>$source,
-											  					     ':system'=>$system] ) ;
+					  $query,
+					  $query_params ) ;
 
 		$this->remove_obsolete() ;
 	}

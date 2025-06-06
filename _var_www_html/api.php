@@ -41,6 +41,7 @@ require_once( "include/error.php" ) ;
 require_once( "include/github.php" ) ;
 require_once( "include/log.php" ) ;
 require_once( "include/memcached.php" ) ;
+require_once( "include/sqlite.php" ) ;
 require_once( "include/utilities.php" ) ;
 require_once( "include/web_calls.php" ) ;
 
@@ -711,31 +712,12 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 	}
 
 	// making sure we have all the microservices we'll need
-	$microservices_mapping = null ;
+	$microservices_mapping = get_microservices_mapping() ;
+	$microservices = [] ;
+	compile_system_microservice_list( $system_config, $microservices ) ;
 	if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 		  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
-		$microservices = [] ;
-	    $microservices_mapping = [] ;
-	    if( !file_exists("/microservices.json") ) {
-	        (new error_())->add( "missing known microservices file",
-	                             "1J6cDOU8FpXy",
-	                             1,
-	                             "backend" ) ;
-	        @unlink( "/data/{$system}.state.json.lock" ) ;
-	        return false ;
-	    }
-	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
-	    if( $microservices_mapping===null ||
-	        !is_associative_array($microservices_mapping) ) {
-	        (new error_())->add( "invalid known microservices file",
-	                             "8IvN0L65xZGm",
-	                             1,
-	                             "backend" ) ;
-	        @unlink( "/data/{$system}.state.json.lock" ) ;
-	        return false ;
-	    }
 		$microservices_missing = [] ;
-		compile_system_microservice_list( $system_config, $microservices ) ;
 		foreach( $microservices as $microservice ) {
 			if( !array_key_exists($microservice, $microservices_mapping) ) {
 				$microservices_missing[] = $microservice ;
@@ -787,27 +769,7 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 		return false ;
 	}
 
-	$microservices_mapping = null ;
-	if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
-		  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
-		$microservices_mapping = [] ;
-	    if( !file_exists("/microservices.json") ) {
-	        (new error_())->add( "missing known microservices file",
-	                             "kBsS5n2Zj40F",
-	                             2,
-	                             "backend" ) ;
-	        return false ;
-	    }
-	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
-	    if( $microservices_mapping===null ||
-	        !is_associative_array($microservices_mapping) ) {
-	        (new error_())->add( "invalid known microservices file",
-	                             "8Q5z1MDfD94s",
-	                             2,
-	                             "backend" ) ;
-	        return false ;
-	    }
-	}
+	$microservices_mapping = get_microservices_mapping() ;
 
 	foreach( $microservice_sequences as $microservice_sequence ) {
 		run_microservice_sequence( $microservice_sequence, $microservices_mapping, true ) ;
@@ -819,7 +781,7 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 }
 
 
-function compile_system_microservice_list( $system_config, &$microservice_list ) {
+function compile_system_microservice_list( $system_config, &$microservice_list, $include_devices=false ) {
 	if( is_array($system_config) && is_associative_array($system_config) ) {
 		foreach( $system_config as $key=>$value ) {
 			if( ($key=='set' || $key=='get') && is_array($value) ) {
@@ -836,7 +798,12 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
                         if( $microservice_tag=="current" ) {
                             $microservice_tag = get_version( true ) ;
                         }
-						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
+						$microservice_key = "{$microservice_name}:{$microservice_tag}" ;
+						if( $include_devices ) {
+							$device = implode( ":", array_slice(explode(":", $microservice_call), 1) ) ;
+							$device = explode( "/", $device )[1] ;
+							$microservice_key .= "/{$device}" ;
+						}
 						if( !in_array($microservice_key, $microservice_list) ) {
 							$microservice_list[] = $microservice_key ;
 						}
@@ -852,14 +819,19 @@ function compile_system_microservice_list( $system_config, &$microservice_list )
                         if( $microservice_tag=="current" ) {
                             $microservice_tag = get_version( true ) ;
                         }
-						$microservice_key  = "{$microservice_name}:{$microservice_tag}" ;
+						$microservice_key = "{$microservice_name}:{$microservice_tag}" ;
+						if( $include_devices ) {
+							$device = implode( ":", array_slice(explode(":", $microservice_call['microservice']), 1) ) ;
+							$device = explode( "/", $device )[1] ;
+							$microservice_key .= "/{$device}" ;
+						}
 						if( !in_array($microservice_key, $microservice_list) ) {
 							$microservice_list[] = $microservice_key ;
 						}
 					}
 				}
 			} else {
-				compile_system_microservice_list( $value, $microservice_list ) ;
+				compile_system_microservice_list( $value, $microservice_list, $include_devices ) ;
 			}
 		}
 	}
@@ -1555,6 +1527,110 @@ function clear_cache() {
 // |_|  |_|\___/|_| |_|_|\__\___/|_|  |_|_| |_|\__, |
 //                                             |___/ 
 
+
+function cli_gather_microservice_errors() {
+	while( true ) {
+		echo "> ", date( "Y-m-d H:i:s" ), "\n" ;
+		$results = sqlite_query( "/dev/shm/microservices.db",
+							     "SELECT microservice,
+									     device FROM data",
+							     [] ) ;
+		// adding the "all" devices
+		$unique_microservices = [] ;
+		foreach( $results as $result ) {
+			if( !in_array($result['microservice'], $unique_microservices) ) {
+				$unique_microservices[] = $result['microservice'] ;
+			}
+		}
+		foreach( $unique_microservices as $unique_microservice ) {
+			$results[] = ['microservice'=>$unique_microservice,
+						  'device'=>"all"] ;
+		}
+		foreach( $results as $result ) {
+			$microservice = $result['microservice'] ;
+			$device       = $result['device'] ;
+			echo ">   {$microservice}/{$device}\n" ;
+			$repo_parts = explode( "/", $microservice ) ;
+            $repo_owner = $repo_parts[0] ;
+            $repo_path = "/" ;
+            $i=1 ;
+            while( $i<count($repo_parts) &&
+            	   substr_count($repo_parts[$i], ":")==0 ) {
+            	$repo_path .= "{$repo_parts[$i]}/" ;
+	            $i++ ;
+            }
+            $repo_name = "" ;
+            if( substr_count($repo_parts[$i], ":")==1 ) {
+            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
+            }
+            $tag = explode( ":", explode("/", $microservice)[$i] )[1] ;
+            $microservices_mapping = get_microservices_mapping() ;
+            $url ;
+        	if( $microservices_mapping===null ) {
+        		$url = $repo_name . "/errors" ;
+        	} else {
+		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/errors" ;
+		    }
+	        echo ">     repo_owner: {$repo_owner}\n" ;
+	        echo ">     repo_path: {$repo_path}\n" ;
+	        echo ">     repo_name: {$repo_name}\n" ;
+	        echo ">     tag: {$tag}\n" ;
+	        echo ">     url: {$url}\n" ;
+
+	        $ch = curl_init() ;
+			curl_setopt( $ch, CURLOPT_URL, $url ) ;
+			curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false ) ;
+			curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, "GET" ) ;
+			curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 1 ) ;
+			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ) ;
+			curl_setopt( $ch, CURLOPT_TIMEOUT, 5 ) ;
+			$response = curl_exec( $ch ) ;
+			$response_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE ) ;
+			$curl_errno = curl_errno( $ch ) ;
+			curl_close( $ch ) ;
+
+			if( $response_code==200 ) {
+				$response = @json_decode( $response, true ) ;
+				if( !is_array($response) ) {
+					(new error_())->add( "microservice {$microservice} didn't hand back an array when listing errors with url: {$url}",
+			                             "g8637mvubS1I",
+			                             3,
+			                             ["backend",
+			                              "microservice"],
+			                              $microservice ) ;
+				} else {
+					foreach( $response as $time_stamp=>$message ) {
+						if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,}/', $time_stamp) ) {
+							(new error_())->add( "microservice {$microservice} handed back an error with an invalid time_stamp: {$time_stamp}" ,
+					                             "6k43LX5qB5E8",
+					                             3,
+					                             ["backend",
+					                              "microservice"],
+					                              $microservice ) ;
+						} else if( !is_string($message) ) {
+							(new error_())->add( "microservice {$microservice} handed back an error with an invalid message: " . var_export($message, true) ,
+					                             "ig5s9B61Pz5d",
+					                             3,
+					                             ["backend",
+					                              "microservice"],
+					                              $microservice ) ;
+						} else {
+							(new error_())->add( "{$time_stamp}: {$message}" ,
+					                             "GG68bGF98wyT",
+					                             3,
+					                             ["backend",
+					                              "microservice"],
+					                              $microservice ) ;
+						}
+					}
+				}
+			}
+		}
+		sleep( 60 ) ;
+	}
+}
+
+
 function get_version( $return_only=false ) {
 	$version = "unknown" ;
 	if( file_exists("/var/version") ) {
@@ -1700,6 +1776,34 @@ function close_with_500( $message ) {
  //  \___/ \__|_|_|_|\__|_|\___||___/
 
 
+function get_microservices_mapping() {
+	$microservices_mapping = null ;
+
+	if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
+		  getenv()['ADDRESS_MICROSERVICES_BY_NAME']=="true") ) {
+		$microservices_mapping = [] ;
+	    if( !file_exists("/microservices.json") ) {
+	        (new error_())->add( "missing known microservices file",
+	                             "Ju8R9t0CtH98",
+	                             2,
+	                             "backend" ) ;
+	        return false ;
+	    }
+	    $microservices_mapping = json_decode( safe_file_get_contents("/microservices.json"), true ) ;
+	    if( $microservices_mapping===null ||
+	        !is_associative_array($microservices_mapping) ) {
+	        (new error_())->add( "invalid known microservices file",
+	                             "4Dj67wmWDq10",
+	                             2,
+	                             "backend" ) ;
+	        return false ;
+	    }
+	}
+
+	return $microservices_mapping ;
+}
+
+
 function process_system_config( &$content, $variables ) {
 	// sections which should not be part of the state (which gets passed around to various parties)
 	$content = json_decode( $content, true ) ;
@@ -1712,6 +1816,26 @@ function process_system_config( &$content, $variables ) {
 		}
 		unset( $content['remove_top_level_sections'] ) ;
 	}
+
+	// we keep track of all microservices/devices this orchestrator is using so we can gather errors from them in cli_gather_microservice_errors()
+	$microservices = [] ;
+	compile_system_microservice_list( $content, $microservices, true ) ;
+	file_put_contents( "/dev/shm/test", var_export($microservices, true) ) ;
+	foreach( $microservices as $microservice ) {
+		$device = implode( ":", array_slice(explode(":", $microservice), 1) ) ;
+		$device = explode( "/", $device )[1] ;
+		$microservice = implode( ":", array_slice(explode(":", $microservice), 0, 2) ) ;
+		if( $microservice[strlen($microservice)-1]=="/" ) {
+			$microservice = substr( $microservice, 0, -1 ) ;
+		}
+		sqlite_query( "/dev/shm/microservices.db",
+					  "INSERT OR IGNORE INTO data (microservice,
+												   device) VALUES (:microservice,
+																   :device)",
+					  [':microservice'=>$microservice,
+					   ':device'=>$device] ) ;
+	}
+
 	$content = json_encode( $content, JSON_PRETTY_PRINT ) ;
 
 	$matchess = [] ;
