@@ -82,6 +82,10 @@ When set to anything other than empty string or _*_, orchestrator will restrict 
 
 When set to _true_, DNS entries will be preserved on disk as a way to survive beyond reboots. This is meant to optimize resilience in front of outages, but it's not advantageous in all circumstances, and might cause issues with DNS entries changing. DNS entries which were persisted this way are wiped with the API call to "Clear Global Cache".
 
+`LOG_ERRORS` {_true_, **_false_**}
+
+When set to _true_, errors will be sent to the logging facility. !Warning! the orchestrator handles many types of errors, from its own operation, from the microservices it interacts with, and even clients can report errors to it so that they may percolate through the various layers. Depending on the error reporting options you have set, it might be too much volume.
+
 `LOG_TO_SPLUNK` {_true_, **_false_**}
 
 When set to _true_, various significant pieces of data will be shipped to a Splunk instance. Make sure to specify the following environment variables: LOG_TO_SPLUNK_URL, LOG_TO_SPLUNK_KEY & LOG_TO_SPLUNK_INDEX
