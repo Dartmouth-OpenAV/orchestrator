@@ -13,7 +13,6 @@ class log_ {
     }
 
     function add_entry( $system, $type, $data ) {
-        // data is currently string, need to make array ? and add room and type?
         if( isset(getenv()['LOG_TO_SPLUNK']) &&
             getenv()['LOG_TO_SPLUNK']=="true" ) {
             if( isset(getenv()['LOG_TO_SPLUNK_URL']) &&

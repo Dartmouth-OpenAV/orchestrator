@@ -143,9 +143,10 @@ class error_ {
 		$tags = implode( "|", $tags ) ;
 		
 		if( $tolerance>0 ) {
-			$error_hash = md5( $code . $severity . implode("|", $tags) . $source . $system ) ; // the message isn't included as it might contain fluctuating details
+			$error_hash = md5( $code . $severity . $tags . $source . $system ) ; // the message isn't included as it might contain fluctuating details
 			$tolerance_filename = "{$this->error_tolerance_cache_dir}/error_tolerance.{$error_hash}.json" ;
 			$tolerance_data = [] ;
+
 			if( file_exists($tolerance_filename) ) {
 				$tolerance_data = json_decode( safe_file_get_contents($tolerance_filename), true ) ;
 				if( !is_array($tolerance_data) ) {
@@ -169,8 +170,7 @@ class error_ {
 			// adding new one
 			$tolerance_data[] = $now ;
 			safe_file_put_contents( $tolerance_filename, json_encode($tolerance_data) ) ;
-
-			if( count($tolerance_data)<=$tolerance ) {
+			if( count($tolerance_data)>$tolerance ) {
 				// occurred within tolerance, no need to actually do anything
 				return null ;
 			}
@@ -225,6 +225,16 @@ class error_ {
 		sqlite_query( "/dev/shm/errors.db",
 					  $query,
 					  $query_params ) ;
+
+		if( isset(getenv()['LOG_ERRORS']) &&
+            getenv()['LOG_ERRORS']=="true" ) {
+			(new log_())->add_entry( $system, "error", ['message'=>$message,
+														'code'=>$code,
+														'severity'=>$severity,
+														'tags'=>explode( "|", $tags),
+														'source'=>$source,
+														'system'=>$system] ) ;
+		}
 
 		$this->remove_obsolete() ;
 	}

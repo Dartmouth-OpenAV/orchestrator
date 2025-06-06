@@ -66,7 +66,9 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 		                     "Ow5AID737SLX",
 				             1,
 				             ["backend"],
-				             "orchestrator" ) ;
+				             "orchestrator",
+				             null,
+				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration lXl01G4c3AOz" ;
 			exit( 1 ) ;
@@ -98,7 +100,9 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 		                     "cF30D09PLe8Q",
 				             1,
 				             ["backend"],
-				             "orchestrator" ) ;
+				             "orchestrator",
+				             null,
+				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration 7s7tkkwi4A0x" ;
 			exit( 1 ) ;
@@ -118,7 +122,9 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']) &&
 		                 "7w6PMmT2tKiB",
 				         1,
 				         ["backend"],
-				         "orchestrator" ) ;
+				         "orchestrator",
+				         null,
+				         1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration DURM8ib6m0HD" ;
 			exit( 1 ) ;
@@ -136,7 +142,9 @@ if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 		                     "xmL0vDH5E10m",
 				             1,
 				             ["backend"],
-				             "orchestrator" ) ;
+				             "orchestrator",
+				             null,
+				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration Ck98XG1SKeC3" ;
 			exit( 1 ) ;
@@ -288,7 +296,14 @@ function route_function_if_authorized( $function_name ) {
 		}
 	}
 
-	if( !file_exists("/authorization.json") ) {
+	if( !file_exists("/authorization.json") ) {	
+		(new error_())->add( "missing authorization.json file",
+		                     "FTcPYB05oK33",
+				             2,
+				             ["backend"],
+				             "orchestrator",
+				             null,
+				             1 ) ;
 		close_with_500( "server misconfiguration FTcPYB05oK33" ) ;
 		exit( 1 ) ; // for good measure
 	}
@@ -300,6 +315,13 @@ function route_function_if_authorized( $function_name ) {
 		$authorization = json_decode( $authorization, true ) ;
 
 		if( !is_array($authorization) ) {
+			(new error_())->add( "authorization file not an array",
+		                     	 "XG8kOpa29aJ3",
+				             	 2,
+				             	 ["backend"],
+				             	 "orchestrator",
+				             	 null,
+					             1 ) ;
 			close_with_500( "server misconfiguration XG8kOpa29aJ3" ) ;
 			exit( 1 ) ; // for good measure
 		}
@@ -547,7 +569,7 @@ function get_system_state() {
 function update_system_state() {
 	global $path ;
 
-	// TODO: throttling requests
+	// TODO: throttling requests?
 
 	$system = explode( "/", $path ) ;
 	$system = $system[1] ;
@@ -560,6 +582,8 @@ function update_system_state() {
 	if( $update===null ) {
 		close_with_400( "provided update is invalid JSON" ) ;
 	}
+
+	(new log_())->add_entry( $system, "state_update", $update ) ;
 
 	system_config_and_state_refresh( $system ) ;
 
