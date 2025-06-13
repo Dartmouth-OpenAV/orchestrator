@@ -2029,14 +2029,14 @@ function get_microservices_mapping() {
 function process_system_config( &$content, $variables ) {
 	// sections which should not be part of the state (which gets passed around to various parties)
 	$content = json_decode( $content, true ) ;
-	if( isset($content['remove_top_level_sections']) &&
-		is_array($content['remove_top_level_sections']) ) {
-		foreach( $content['remove_top_level_sections'] as $remove_top_level_section ) {
+	if( isset($content['omit_top_level_sections_from_state']) &&
+		is_array($content['omit_top_level_sections_from_state']) ) {
+		foreach( $content['omit_top_level_sections_from_state'] as $remove_top_level_section ) {
 			if( isset($content[$remove_top_level_section]) ) {
 				unset( $content[$remove_top_level_section] ) ;
 			}
 		}
-		unset( $content['remove_top_level_sections'] ) ;
+		unset( $content['omit_top_level_sections_from_state'] ) ;
 	}
 
 	// we keep track of all microservices/devices this orchestrator is using so we can gather errors from them in cli_gather_microservice_errors()
