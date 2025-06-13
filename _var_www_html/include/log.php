@@ -13,7 +13,6 @@ class log_ {
     }
 
     function add_entry( $system, $type, $data, $time_stamp_override=null ) {
-        file_put_contents( "/tmp/meow", var_export($system, true).var_export($state, true).var_export($data, true)) ;
         if( isset(getenv()['LOG_TO_SPLUNK']) &&
             getenv()['LOG_TO_SPLUNK']=="true" ) {
             if( isset(getenv()['LOG_TO_SPLUNK_URL']) &&
