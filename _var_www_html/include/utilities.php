@@ -46,4 +46,17 @@ function safe_file_put_contents( $filename, $data ) {
 }
 
 
+// AI coded
+function short_alnum_hash(string $text): string {
+    // 1. Full SHA-256, raw binary
+    $full = hash('sha256', $text, true);      // 32 bytes
+    
+    // 2. Keep the first 8 bytes (64 bits) → big-endian integer
+    $int  = unpack('J', substr($full, 0, 8))[1];   // PHP 7.0+: 'J' = 64-bit unsigned
+    
+    // 3. To base-36 (0-9A-Z), pad to 12 chars
+    return str_pad(strtoupper(base_convert($int, 10, 36)), 12, '0', STR_PAD_LEFT);
+}
+
+
 ?>

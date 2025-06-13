@@ -37,6 +37,7 @@ CREATE TABLE data (
   tags TEXT,
   source TEXT,
   system TEXT,
+  is_reported INTEGER NOT NULL DEFAULT 0,
   time_stamp TEXT DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX idx_code ON data(code);

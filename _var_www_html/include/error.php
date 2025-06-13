@@ -28,16 +28,19 @@ class error_ {
 	}
 
 
-	function list( $code=null, $severity=null, $tags=null, $source=null, $system=null  ) {
+	function list( $code=null, $severity=null, $tags=null, $source=null, $system=null ) {
+		if( $code===null ) { $code = "" ; } // string Vs null queries are built different so we're making our lives easier here
+		if( $severity===null ) { $severity = "" ; }
+		if( $tags===null ) { $tags = "" ; }
+		if( $source===null ) { $source = "" ; }
+		if( $system===null ) { $system = "" ; }
 		$this->remove_obsolete() ;
 
 		$query = "" ;
 		$query_params = [] ;
-		if( $code!==null || $severity!==null || $tags!==null || $source!==null || $system!==null ) {
-			$query .= " WHERE" ;
-		}
+		$query .= " WHERE" ;
 		$need_and = false ;
-		if( $code!==null ) {
+		if( $code!=="" ) {
 			if( $need_and ) {
 				$query .= " AND" ;
 			}
@@ -45,7 +48,7 @@ class error_ {
 			$query_params[':code'] = $code ;
 			$need_and = true ;
 		}
-		if( $severity!==null ) {
+		if( $severity!=="" ) {
 			if( $need_and ) {
 				$query .= " AND" ;
 			}
@@ -53,7 +56,7 @@ class error_ {
 			$query_params[':severity'] = $severity ;
 			$need_and = true ;
 		}
-		if( $tags!==null ) {
+		if( $tags!=="" ) {
 			if( $need_and ) {
 				$query .= " AND" ;
 			}
@@ -99,7 +102,7 @@ class error_ {
 			$query .= ")" ;
 			$need_and = true ;
 		}
-		if( $source!==null ) {
+		if( $source!=="" ) {
 			if( $need_and ) {
 				$query .= " AND" ;
 			}
@@ -107,7 +110,7 @@ class error_ {
 			$query_params[':source'] = $source ;
 			$need_and = true ;
 		}
-		if( $system!==null ) {
+		if( $system!=="" ) {
 			if( $need_and ) {
 				$query .= " AND" ;
 			}
@@ -115,6 +118,10 @@ class error_ {
 			$query_params[':system'] = $system ;
 			$need_and = true ;
 		}
+		if( $need_and ) {
+			$query .= " AND" ;
+		}
+		$query .= " is_reported=1" ;
 
 		$errors = sqlite_query( "/dev/shm/errors.db",
                                 "SELECT message,
@@ -129,7 +136,18 @@ class error_ {
 	}
 
 
-	function add( $message, $code, $severity, $tags=[], $source=null, $system=null, $tolerance=0, $time_stamp_override=false ) { // tolerance is count over last hour
+	function add( $message,
+				  $code,
+				  $severity, // 1 is considered most severe
+				  $tags=[],
+				  $source=null,
+				  $system=null,
+				  $tolerance_per_hour=0, // tolerance means "won't bark unless I get more than x per hour"
+				  $limit_per_hour=60, // limit means "won't bark beyond x per hour"
+				  $time_stamp_override=null ) {
+		if( $source===null ) { $source = "" ; } // string Vs null queries are built different so we're making our lives easier here
+		if( $system===null ) { $system = "" ; }
+
 		if( !is_array($tags) ) {
 			// trying to be nice
 			if( is_string($tags) ) {
@@ -141,40 +159,6 @@ class error_ {
 			sort( $tags ) ;
 		}
 		$tags = implode( "|", $tags ) ;
-		
-		if( $tolerance>0 ) {
-			$error_hash = md5( $code . $severity . $tags . $source . $system ) ; // the message isn't included as it might contain fluctuating details
-			$tolerance_filename = "{$this->error_tolerance_cache_dir}/error_tolerance.{$error_hash}.json" ;
-			$tolerance_data = [] ;
-
-			if( file_exists($tolerance_filename) ) {
-				$tolerance_data = json_decode( safe_file_get_contents($tolerance_filename), true ) ;
-				if( !is_array($tolerance_data) ) {
-					$tolerance_data = [] ;
-				}
-			}
-
-			// cleaning up obsolete entries
-			$now = time() ;
-			$indices_to_remove = [] ;
-			for( $i=0 ; $i<count($tolerance_data) ; $i++ ) {
-				if( ($now-$tolerance_data[$i])>3600 ) {
-					$indices_to_remove[] = $i ;
-				}
-			}
-			foreach( $indices_to_remove as $index_to_remove ) {
-				unset( $tolerance_data[$index_to_remove] ) ;
-			}
-			$tolerance_data = array_values( $tolerance_data ) ;
-
-			// adding new one
-			$tolerance_data[] = $now ;
-			safe_file_put_contents( $tolerance_filename, json_encode($tolerance_data) ) ;
-			if( count($tolerance_data)>$tolerance ) {
-				// occurred within tolerance, no need to actually do anything
-				return null ;
-			}
-		}
 
 		// trace
 	    $e = new Exception() ;
@@ -185,10 +169,10 @@ class error_ {
 
 	    $time_stamp = date( "Y-m-d H:i:s" ) ;
 
-	    if( $time_stamp_override!==false ) {
+	    if( $time_stamp_override!==null ) {
 	    	if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $time_stamp_override) &&
 			    !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,9}/', $time_stamp_override) ) {
-	    		$time_stamp_override = false ;
+	    		$time_stamp_override = null ;
 	    	}
 	    }
 
@@ -198,7 +182,7 @@ class error_ {
 					  			    tags,
 					  			    source,
 					  			    system" ;
-		if( $time_stamp_override!==false ) {
+		if( $time_stamp_override!==null ) {
 			$query .= ",time_stamp" ;
 		}
 		$query .= ") VALUES (:message,
@@ -207,7 +191,7 @@ class error_ {
 					  		 :tags,
 					  		 :source,
 					  		 :system" ;
-		if( $time_stamp_override!==false ) {
+		if( $time_stamp_override!==null ) {
 			$query .= ",:time_stamp" ;
 		}
 		$query .= ")" ;
@@ -218,22 +202,68 @@ class error_ {
 						 ':tags'=>$tags,
 						 ':source'=>$source,
 						 ':system'=>$system] ;
-		if( $time_stamp_override!==false ) {
+		if( $time_stamp_override!==null ) {
 			$query_params[':time_stamp'] = $time_stamp_override ;
 		}
 
-		sqlite_query( "/dev/shm/errors.db",
-					  $query,
-					  $query_params ) ;
+		$insert_id = sqlite_query( "/dev/shm/errors.db",
+					  			   $query,
+					 			   $query_params,
+					 			   false,
+					 			   true ) ;
 
-		if( isset(getenv()['LOG_ERRORS']) &&
-            getenv()['LOG_ERRORS']=="true" ) {
-			(new log_())->add_entry( $system, "error", ['message'=>$message,
-														'code'=>$code,
-														'severity'=>$severity,
-														'tags'=>explode( "|", $tags),
-														'source'=>$source,
-														'system'=>$system] ) ;
+		// now's the time to decide if this one will actually percolate through the reporting layers
+		$report_based_on_tolerance = true ;
+		if( $tolerance_per_hour>0 ) {
+			$recent_error_count = sqlite_query( "/dev/shm/errors.db",
+											    "SELECT COUNT(1) FROM data WHERE code=:code AND
+											    								 severity=:severity AND
+											    								 source=:source AND
+											    								 system=:system AND
+											    								 time_stamp<datetime('now', '-1 hour')",
+											    [':code'=>$code,
+						 						 ':severity'=>$severity,
+						 						 ':source'=>$source,
+						 						 ':system'=>$system], true ) ;
+			if( $recent_error_count<$tolerance_per_hour ) {
+				$report_based_on_tolerance = false ;
+			}
+		}
+		$report_based_on_limit = false ;
+		if( $report_based_on_tolerance &&
+			$limit_per_hour>0 ) {
+			$recent_reported_error_count = sqlite_query( "/dev/shm/errors.db",
+											             "SELECT COUNT(1) FROM data WHERE code=:code AND
+											    								          severity=:severity AND
+											    								          source=:source AND
+											    								          system=:system AND
+											    								          is_reported=1 AND
+											    								          time_stamp<datetime('now', '-1 hour')",
+											             [':code'=>$code,
+						 						          ':severity'=>$severity,
+						 						          ':source'=>$source,
+						 						          ':system'=>$system], true ) ;
+			if( $recent_reported_error_count<$limit_per_hour ) {
+				$report_based_on_limit = true ;
+			}
+		}
+
+		if( $report_based_on_tolerance &&
+			$report_based_on_limit ) {
+			if( preg_match('/^\d{1,}$/', $insert_id) ) {
+				sqlite_query( "/dev/shm/errors.db",
+							  "UPDATE data SET is_reported=1 WHERE id=:id",
+											             [':id'=>$insert_id] ) ;
+			}
+			if( isset(getenv()['LOG_ERRORS']) &&
+	            getenv()['LOG_ERRORS']=="true" ) {
+				(new log_())->add_entry( $system, "error", ['message'=>$message,
+															'code'=>$code,
+															'severity'=>$severity,
+															'tags'=>explode( "|", $tags),
+															'source'=>$source,
+															'system'=>$system], $time_stamp_override ) ;
+			}
 		}
 
 		$this->remove_obsolete() ;

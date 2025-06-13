@@ -2,11 +2,6 @@ FROM ubuntu:24.04
 
 RUN apt-get update --fix-missing
 
-# fixing timezone
-RUN DEBIAN_FRONTEND=noninteractive apt-get install tzdata -y
-ENV TZ=America/New_York
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
 # utilities
 RUN DEBIAN_FRONTEND=noninteractive apt-get install screen htop telnet w3m curl vim-tiny jq -y
 

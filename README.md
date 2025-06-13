@@ -110,6 +110,10 @@ System configuration files can simply be passed by volume, when this is set to _
 
 Only effective when `SYSTEM_CONFIGURATIONS_VIA_VOLUME` is _true_. When set to _true_ configuration files are instantaneously applied upon change. This is aggressive on the filesystem and meant only for development and demonstration purposes.
 
+`TZ` {(string),(**null**)}
+
+To specify the timezone to account time into, UTC will be used by default otherwise. Find your local timezone in the "TZ identifier" column [in this table](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List)
+
 `VERSION` {(string),(**null**)}
 
-sets what the API call to "Get Version" will return
+Sets what the API call to "Get Version" will return

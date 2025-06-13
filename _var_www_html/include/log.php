@@ -2,9 +2,15 @@
 
 
 require_once( "error.php" ) ;
+require_once( "include/time.php" ) ;
 require_once( "web_calls.php" ) ;
 
-
+(new log_())->add_entry( $system, "error", ['message'=>$message,
+                                                            'code'=>$code,
+                                                            'severity'=>$severity,
+                                                            'tags'=>explode( "|", $tags),
+                                                            'source'=>$source,
+                                                            'system'=>$system] ) ;
 class log_ {
 
     // variable declaration
@@ -12,13 +18,14 @@ class log_ {
     function __construct() {
     }
 
-    function add_entry( $system, $type, $data ) {
+    function add_entry( $system, $type, $data, $time_stamp_override=null ) {
         if( isset(getenv()['LOG_TO_SPLUNK']) &&
             getenv()['LOG_TO_SPLUNK']=="true" ) {
             if( isset(getenv()['LOG_TO_SPLUNK_URL']) &&
                 isset(getenv()['LOG_TO_SPLUNK_KEY']) &&
                 isset(getenv()['LOG_TO_SPLUNK_INDEX']) ) {
-                $splunk_data = ["time"=>time(),
+                $splunk_time_stamp = ($time_stamp_override===null)?time():strtotime($time_stamp_override) ;
+                $splunk_data = ["time"=>$splunk_time_stamp,
                                 "host"=>gethostname().".".$system,
                                 "sourcetype"=>$type,
                                 "index"=>getenv()['LOG_TO_SPLUNK_INDEX'],
@@ -30,7 +37,10 @@ class log_ {
                                      "52Tf7ejz9O0t",
                                      2,
                                      ["backend"],
-                                     "orchestrator" ) ;
+                                     "orchestrator",
+                                     null,
+                                     0,
+                                     1 ) ;
             }
         }
     }

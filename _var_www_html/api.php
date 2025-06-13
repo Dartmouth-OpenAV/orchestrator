@@ -27,8 +27,6 @@ if( php_sapi_name()!="cli" ) {
 }
 
 
-
-
 //  ___            _           _           
 // |_ _|_ __   ___| |_   _  __| | ___  ___ 
 //  | || '_ \ / __| | | | |/ _` |/ _ \/ __|
@@ -42,6 +40,7 @@ require_once( "include/github.php" ) ;
 require_once( "include/log.php" ) ;
 require_once( "include/memcached.php" ) ;
 require_once( "include/sqlite.php" ) ;
+require_once( "include/time.php" ) ;
 require_once( "include/utilities.php" ) ;
 require_once( "include/web_calls.php" ) ;
 
@@ -68,6 +67,7 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']) &&
 				             ["backend"],
 				             "orchestrator",
 				             null,
+				             0,
 				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration lXl01G4c3AOz" ;
@@ -102,6 +102,7 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 				             ["backend"],
 				             "orchestrator",
 				             null,
+				             0,
 				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration 7s7tkkwi4A0x" ;
@@ -124,6 +125,7 @@ if( isset(getenv()['SYSTEM_CONFIGURATIONS_INSTANT_REFRESH']) &&
 				         ["backend"],
 				         "orchestrator",
 				         null,
+				         0,
 				         1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration DURM8ib6m0HD" ;
@@ -144,6 +146,7 @@ if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 				             ["backend"],
 				             "orchestrator",
 				             null,
+				             0,
 				             1 ) ;
 		if( php_sapi_name()==="cli" ) {
 			echo "server misconfiguration Ck98XG1SKeC3" ;
@@ -303,6 +306,7 @@ function route_function_if_authorized( $function_name ) {
 				             ["backend"],
 				             "orchestrator",
 				             null,
+				             0,
 				             1 ) ;
 		close_with_500( "server misconfiguration FTcPYB05oK33" ) ;
 		exit( 1 ) ; // for good measure
@@ -321,6 +325,7 @@ function route_function_if_authorized( $function_name ) {
 				             	 ["backend"],
 				             	 "orchestrator",
 				             	 null,
+					             0,
 					             1 ) ;
 			close_with_500( "server misconfiguration XG8kOpa29aJ3" ) ;
 			exit( 1 ) ; // for good measure
@@ -353,7 +358,10 @@ function route_function_if_authorized( $function_name ) {
 								                     "beN52Bs1hV1R",
 										             2,
 										             ["backend"],
-										             "orchestrator" ) ;
+										             "orchestrator",
+										             null,
+										             0,
+										             1 ) ;
 							}
 						} else if( $client_match_method=="cidr" ) {
 							// IP CIDR authorization
@@ -371,7 +379,10 @@ function route_function_if_authorized( $function_name ) {
 								                     "4aB73RfXvNKg",
 										             2,
 										             ["backend"],
-										             "orchestrator" ) ;
+										             "orchestrator",
+										             null,
+										             0,
+										             1 ) ;
 							}
 						} else if( $client_match_method=="token" ) {
 							// Token authorization
@@ -387,21 +398,30 @@ function route_function_if_authorized( $function_name ) {
 								                     "kV1676Y24GkF",
 										             2,
 										             ["backend"],
-										             "orchestrator" ) ;
+										             "orchestrator",
+										             null,
+										             0,
+										             1 ) ;
 							}
 						} else {
 							(new error_())->add( "invalid client match method: {$client_match_method}, in authorization rule:\n" . var_export( $rule, true ),
 							                     "tQd16MK34nuC",
 									             2,
 									             ["backend"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             1 ) ;
 						}
 					} else {
 						(new error_())->add( "invalid client in authorization rule:\n" . var_export( $rule, true ),
 						                     "0Xsn41TJKzam",
 								             2,
 								             ["backend"],
-								             "orchestrator" ) ;
+								             "orchestrator",
+								             null,
+								             0,
+								             1 ) ;
 					}
 				}
 
@@ -417,7 +437,10 @@ function route_function_if_authorized( $function_name ) {
 				                     "Nq207jRyWSjr",
 						             2,
 						             ["backend"],
-						             "orchestrator" ) ;
+						             "orchestrator",
+						             null,
+						             0,
+						             1 ) ;
 			}
 		}
 	}
@@ -456,7 +479,9 @@ function system_config_and_state_refresh( $system ) {
 					             3,
 					             ["backend"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 			$refresh = true ;
 		}
 		if( $refresh ) {
@@ -479,7 +504,9 @@ function system_config_and_state_refresh( $system ) {
 						             3,
 						             ["backend"],
 						             "orchestrator",
-						             $system ) ;
+						             $system,
+						             0,
+						             10 ) ;
 				$refresh = true ;
 			}
 		    
@@ -503,7 +530,9 @@ function system_config_and_state_refresh( $system ) {
 					             3,
 					             ["backend"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 			$refresh = true ;
 		}
 		if( $refresh ) {
@@ -525,7 +554,9 @@ function system_config_and_state_refresh( $system ) {
 						             2,
 						             ["backend"],
 						             "orchestrator",
-						             $system ) ;
+						             $system,
+						             0,
+						             10 ) ;
 				$refresh = true ;
 			}
 		    
@@ -556,7 +587,9 @@ function get_system_state() {
 				             1,
 				             ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		close_with_500( "server error" ) ;
 	}
 
@@ -593,7 +626,9 @@ function update_system_state() {
 				             1,
 				             ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		close_with_500( "server error" ) ;
 	}
 	$system_config = json_decode( safe_file_get_contents("/data/{$system}.config.json"), true ) ;
@@ -603,7 +638,9 @@ function update_system_state() {
 				             1,
 				             ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		close_with_500( "server error" ) ;
 	}
 	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
@@ -689,14 +726,18 @@ function cli_refresh_system_config( $system ) {
 						         3,
 						         ["backend"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             1,
+					             10 ) ;
 		} else {
 			(new error_())->add( "unable to refresh config for system: {$system}",
 				                 "V73KUz85ep0C",
 						         1,
 						         ["backend"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 		}
 		return false ;
 	}
@@ -708,14 +749,18 @@ function cli_refresh_system_config( $system ) {
 						         3,
 						         ["configuration"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 		} else {
 			(new error_())->add( "config for system: {$system} is invalid",
 				                 "6C0x23n3hVkS",
 						         1,
 						         ["configuration"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 		}
 		return false ;
 	}
@@ -756,7 +801,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 					         1,
 					         ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
@@ -768,7 +815,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 					         1,
 					        ["configuration"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		@unlink( "/data/{$system}.state.json.lock" ) ;
 		return false ;
 	}
@@ -791,7 +840,9 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 					         	 1,
 					         	 ["backend"],
 					             "orchestrator",
-					             $system ) ;
+					             $system,
+					             0,
+					             10 ) ;
 			@unlink( "/data/{$system}.state.json.lock" ) ;
 			return false ;
 		}
@@ -822,7 +873,9 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 					         1,
 					         ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		return false ;
 	}
 	$microservice_sequences = safe_file_get_contents( $microservice_sequences_filename ) ;
@@ -833,7 +886,9 @@ function cli_run_microservice_sequences( $system, $microservice_sequences_filena
 					         1,
 					         ["backend"],
 				             "orchestrator",
-				             $system ) ;
+				             $system,
+				             0,
+				             10 ) ;
 		return false ;
 	}
 
@@ -927,7 +982,10 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 				                             "ORji83l6j6Xt",
 				                             2,
 				                             ["backend","configuration"],
-								             "orchestrator" ) ;
+								             "orchestrator",
+								             null,
+								             0,
+								             10 ) ;
 		    			// to backend information from percolating up to the client
 		    			$system_config = null ;
 					} else {
@@ -985,7 +1043,10 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 		                             "D3n657jcS8k4",
 		                             2,
 		                             ["backend","configuration"],
-								     "orchestrator" ) ;
+								     "orchestrator",
+								     null,
+								     0,
+								     10 ) ;
     			// to backend information from percolating up to the client
     			$system_config = null ;
 			}
@@ -1014,7 +1075,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 					                 	 "7ND4dL6XCmus",
 							         	 2,
 							         	 ["backend"],
-							             "orchestrator" ) ;
+							             "orchestrator",
+							             null,
+							             0,
+							             10 ) ;
 					$error = "invalid update" ;
 				}
 			}
@@ -1023,7 +1087,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			                 	 "xetOz4m4J0t2",
 					         	 2,
 					         	 ["backend"],
-					             "orchestrator" ) ;
+					             "orchestrator",
+					             null,
+					             0,
+					             10 ) ;
 			$error = "invalid update" ;
 		}
 	} else {
@@ -1039,7 +1106,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 						                 	     "w1ZqaCb014Th",
 								         	     2,
 								         	     ["backend","configuration"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
 			    		} else {
 					    	$variables = call_user_func( $system_config['set_process'], $update ) ;
 					    }
@@ -1051,7 +1121,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 						                 	     "2cz9L2ZhTOzP",
 								         	     2,
 								         	     ["backend","configuration"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
 						} else {
 							$arguments = ['value'=>$update] ;
 							if( isset($system_config['set_process']['function_arguments']) ) {
@@ -1075,13 +1148,19 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 						                 	     "aU8BoySsf80A",
 								         	     2,
 								         	     ["backend","configuration"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
 				    	} else if( !array_key_exists($value_key, $system_config['set_process']) ) {
 				    		(new error_())->add( "unhandled value key for set_process",
 						                 	     "oUNna7FYk98j",
 								         	     2,
 								         	     ["backend","configuration"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
 				    	} else {
 				    		foreach( $system_config['set_process'][$value_key] as $variable_name=>$variable_value ) {
 				    			$variables[$variable_name] = $variable_value ;
@@ -1093,7 +1172,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 				                 	     "uxDQ8Rp9L224",
 						         	     2,
 						         	     ["backend","configuration"],
-							             "orchestrator" ) ;
+							             "orchestrator",
+							             null,
+							             0,
+							             10 ) ;
 			    }
 		    }
 		    if( count($variables)>0 ) {
@@ -1111,7 +1193,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 						                 	     "16W5p2y3pI2R",
 								         	     3,
 								         	     ["backend","configuration"],
-									             "orchestrator" ) ;
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
 						}
 					}
 				}
@@ -1135,7 +1220,10 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			                 	 "I5h05S2P7yQX",
 					         	 2,
 					         	 ["backend","configuration"],
-					             "orchestrator" ) ;
+					             "orchestrator",
+					             null,
+					             0,
+					             10 ) ;
 			$error = "invalid update" ;
 		}
 	}
@@ -1200,7 +1288,10 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
                              "i61Mn7v74J9P",
                              2,
                              ["backend","configuration"],
-				              "orchestrator" ) ;
+				              "orchestrator",
+				              null,
+				              0,
+				              10 ) ;
         return $results ; // which should only be [] at this point
 	}
 	foreach( $microservice_sequence as $microservice_call ) {
@@ -1347,7 +1438,10 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 	                                 "EQr87gl3YCKm",
 	                                 2,
 	                                 ["backend","configuration"],
-						             "orchestrator" ) ;
+						             "orchestrator",
+						             null,
+						             0,
+						             10 ) ;
 	            echo ">   invalid microservice call: {$microservice_call}\n" ;
 	            $proceed_with_call = false ;
 	            $results[] = null ;
@@ -1363,7 +1457,10 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 	                                 "fN45HdtBEv8T",
 	                                 2,
 	                                 ["backend"],
-						             "orchestrator" ) ;
+						             "orchestrator",
+						             null,
+						             0,
+						             10 ) ;
 	            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
 	            $proceed_with_call = false ;
 	            $results[] = null ;
@@ -1487,10 +1584,13 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 								$results[] = null ;
 							}
 							(new error_())->add( "microservice call failed:\n\nrequest:\n  method: {$request_method}\n  url: {$url}  body: {$request_body}\n  headers: " . implode( "\n    ", $request_headers ) . "\n\nresponse:\n  response_code: {$response_code}\n  response: {$response}\n  curl_errno: {$curl_errno}{$timeout_potentially}",
-		                 	 "qv23K8hX8Y0R",
-				         	 1,
-				         	 ["backend","microservice"],
-				              "orchestrator" ) ;
+		                 	                     "qv23K8hX8Y0R",
+				         	                     1,
+				         	                     ["backend","microservice"],
+				                                 "orchestrator",
+				                                 null,
+				                                 0,
+				                                 10 ) ;
 						}
 					}
 				}
@@ -1549,13 +1649,22 @@ function create_client_error() {
 				\"severity\":2 # optional in [1,3], 1 being highest severity
 			}" ) ;
 	}
-	$code = "WQ2r1U4gSX8A" ; // default for client errors
+
+	$client_ip = $_SERVER['REMOTE_ADDR'] ;
+	if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
+	    $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ;
+	}
+	$client_dns = resolve_dns( $client_ip ) ;
+	$client_user_agent = $_SERVER['HTTP_USER_AGENT'] ;
+
+	$code = short_alnum_hash( $client_ip ) ; // default for client errors
 	if( isset($data['code']) ) {
 		if( !preg_match('/^[A-Za-z0-9]{12}$/', $data['code']) ) {
 			close_with_400( "error code must satisfy /^[A-Za-z0-9]{12}$/" ) ;
 		}
 		$code = $data['code'] ;
 	}
+
 	$severity = 3 ; // default for client errors
 	if( isset($data['severity']) ) {
 		if( !is_int($data['severity']) ||
@@ -1565,14 +1674,6 @@ function create_client_error() {
 		}
 		$severity = $data['severity'] ;
 	}
-
-
-	$client_ip = $_SERVER['REMOTE_ADDR'] ;
-	if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
-	    $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ;
-	}
-	$client_dns = resolve_dns( $client_ip ) ;
-	$client_user_agent = $_SERVER['HTTP_USER_AGENT'] ;
 	
 	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data['message']}",
 		                 $code,
@@ -1682,30 +1783,64 @@ function cli_gather_microservice_errors() {
 			                              "microservice"],
 			                              $microservice ) ;
 				} else {
-					foreach( $response as $time_stamp=>$message ) {
+					foreach( $response as $time_stamp=>$data ) {
 						if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,}/', $time_stamp) ) {
 							(new error_())->add( "microservice {$microservice} handed back an error with an invalid time_stamp: {$time_stamp}" ,
 					                             "6k43LX5qB5E8",
 					                             3,
 					                             ["backend",
 					                              "microservice"],
-					                              $microservice ) ;
-						} else if( !is_string($message) ) {
+					                              $microservice,
+					                              null,
+					                              0,
+					                              60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator
+						} else if( $is_string($data) || is_array($data) ) {
+							$message = "" ;
+							if( is_string($data) ) {
+								$message = $data ;
+							} else if( is_array($data) ) {
+								$message = (array_key_exists('message', $data))?$data['message']:var_export( $data, true ) ;
+							} else {
+								$message = "unreachable point #IEEA329q5Cv3" ;
+							}
+							$code = (is_array($data) && array_key_exists('code', $data))?$data['code']:"GG68bGF98wyT" ;
+							$severity = (is_array($data) && array_key_exists('severity', $data))?$data['severity']:3 ;
+							$tags = ["backend", "microservice"] ;
+							if( is_array($data) &&
+								array_key_exists('tags', $data) &&
+								is_array($data['tags']) ) {
+								foreach( $data['tags'] as $tag ) {
+									if( !in_array($tag, $tags) ) {
+										$tags[] = $tag ;
+									}
+								}
+							}
+							// source is not overridable
+							$source = $microservice ;
+							// neither is system
+							$system = null ;
+							$tolerance_per_hour = (is_array($data) && array_key_exists('tolerance_per_hour', $data))?$data['tolerance_per_hour']:0 ;
+							$limit_per_hour = (is_array($data) && array_key_exists('limit_per_hour', $data))?$data['limit_per_hour']:60 ;
+
+							(new error_())->add( $data,
+					                             $code,
+					                             $severity,
+					                             $tags,
+					                             $source,
+					                             $system,
+					                             $tolerance_per_hour,
+					                             $limit_per_hour,
+					                             $time_stamp ) ;
+						} else {
 							(new error_())->add( "microservice {$microservice} handed back an error with an invalid message: " . var_export($message, true) ,
 					                             "ig5s9B61Pz5d",
 					                             3,
 					                             ["backend",
 					                              "microservice"],
-					                              $microservice ) ;
-						} else {
-							(new error_())->add( $message,
-					                             "GG68bGF98wyT",
-					                             3,
-					                             ["backend",
-					                              "microservice"],
 					                              $microservice,
+					                              null,
 					                              0,
-					                              $time_stamp ) ;
+					                              60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator ) ;
 						}
 					}
 				}
@@ -1985,7 +2120,10 @@ function resolve_dns( $fqdn ) {
 			                     "M90ydS7Pdxpk",
 					             2,
 					             ["backend"],
-					             "orchestrator" ) ;
+					             "orchestrator",
+					             null,
+					             0,
+					             10 ) ;
 			return $fqdn ;
 		} else {
 			return gethostbyname( $fqdn ) ;

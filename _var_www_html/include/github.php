@@ -116,7 +116,9 @@ class github_ {
 			                 "Opf7E2euKe13",
 					         3,
 					         ["backend","github"],
-					         "orchestrator" ) ;
+					         "orchestrator",
+					         null,
+					         1 ) ;
 
 		return false ;
 	}
@@ -221,9 +223,11 @@ class github_ {
 				// unknown case so we report as an error
 				(new error_())->add( "Unable to make API call with Github with curl_errno: {$curl_errno}, response_code: {$response_code}, and response:\n{$response}",
 					                 "aEf8D6b3wnQB",
-							         3,
+							         2,
 							         ["backend","github"],
-						             "orchestrator" ) ;
+						             "orchestrator",
+						             null,
+						             1 ) ;
 				if( $retry_count>0 ) {
 					sleep( 1 ) ;
 				}
