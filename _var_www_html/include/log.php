@@ -5,12 +5,6 @@ require_once( "error.php" ) ;
 require_once( "include/time.php" ) ;
 require_once( "web_calls.php" ) ;
 
-(new log_())->add_entry( $system, "error", ['message'=>$message,
-                                                            'code'=>$code,
-                                                            'severity'=>$severity,
-                                                            'tags'=>explode( "|", $tags),
-                                                            'source'=>$source,
-                                                            'system'=>$system] ) ;
 class log_ {
 
     // variable declaration
@@ -19,6 +13,7 @@ class log_ {
     }
 
     function add_entry( $system, $type, $data, $time_stamp_override=null ) {
+        file_put_contents( "/tmp/meow", var_export($system, true).var_export($state, true).var_export($data, true)) ;
         if( isset(getenv()['LOG_TO_SPLUNK']) &&
             getenv()['LOG_TO_SPLUNK']=="true" ) {
             if( isset(getenv()['LOG_TO_SPLUNK_URL']) &&
