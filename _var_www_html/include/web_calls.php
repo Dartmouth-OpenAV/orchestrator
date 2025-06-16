@@ -18,7 +18,7 @@ if( php_sapi_name()==="cli" &&
                                             request_method,
                                             request_headers,
                                             request_body FROM data WHERE keep_refreshed='true' AND
-                                                                         (last_refresh IS NULL OR last_refresh<=datetime('now',printf('-%d minutes', refresh_every_x_minutes)))" ) ;
+                                                                         (last_refresh IS NULL OR last_refresh<=datetime('now', 'localtime', printf('-%d minutes', refresh_every_x_minutes)))" ) ;
         if( count($to_process)>0 ) {
             echo "\n" ;
             $did_something = true ;
@@ -71,7 +71,7 @@ if( php_sapi_name()==="cli" &&
         if( time()-$last_cleanup>60 ) {
             echo "\n> " . date( "Y-m-d H:i:s" ) . " cleaning up non inquired\n" ;
             sqlite_query( "/dev/shm/web_calls.db",
-                          "DELETE FROM data WHERE last_inquiry<datetime('now', '-5 minutes')" ) ;
+                          "DELETE FROM data WHERE last_inquiry<datetime('now', 'localtime', '-5 minutes')" ) ;
             $last_cleanup = time() ;
         }
     }

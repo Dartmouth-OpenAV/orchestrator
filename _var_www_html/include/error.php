@@ -220,7 +220,7 @@ class error_ {
 											    								 severity=:severity AND
 											    								 source=:source AND
 											    								 system=:system AND
-											    								 time_stamp<datetime('now', '-1 hour')",
+											    								 time_stamp<datetime('now', 'localtime', '-1 hour')",
 											    [':code'=>$code,
 						 						 ':severity'=>$severity,
 						 						 ':source'=>$source,
@@ -238,7 +238,7 @@ class error_ {
 											    								          source=:source AND
 											    								          system=:system AND
 											    								          is_reported=1 AND
-											    								          time_stamp<datetime('now', '-1 hour')",
+											    								          time_stamp>datetime('now', 'localtime', '-1 hour')",
 											             [':code'=>$code,
 						 						          ':severity'=>$severity,
 						 						          ':source'=>$source,
@@ -272,7 +272,7 @@ class error_ {
 
 	function remove_obsolete() {
 		sqlite_query( "/dev/shm/errors.db",
-					  "DELETE FROM data WHERE time_stamp<datetime('now', '-{$this->error_retention_hours} hours')", [] ) ;
+					  "DELETE FROM data WHERE time_stamp<datetime('now', 'localtime', '-{$this->error_retention_hours} hours')", [] ) ;
 	}
 }
 
