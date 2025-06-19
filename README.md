@@ -94,6 +94,10 @@ When set to _true_, various significant pieces of data will be shipped to a Splu
 
 When LOG_TO_SPLUNK is set to true, these help define where to send the log entries.
 
+`SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER`, `SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY` & `SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH` {(string),(**null**)}
+
+When using Github to host system configuration files, lets one specify the owner/repository/path where they are located. For example your if your configs where at: https://github.com/MyOrganization/MyRepo/SomePathToJsonFiles, `SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_OWNER` would be set to _MyOrganization_, `SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY` to _MyRepo_, and `SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH` to _SomePathToJsonFiles_.
+
 `SYSTEM_CONFIGURATIONS_GITHUB_TOKEN` {(string),(**null**)}
 
 When using Github to host system configuration files, one would hope you do so in a private repository :). And so this environment variables serves to pass a token with read permission to that repository. Token based authentication isn't the best you can do here, you need to manage accounts, classic tokens are a liability, fine grained tokens expire. But it's quick to setup.
