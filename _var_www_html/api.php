@@ -2072,7 +2072,7 @@ function process_system_config( &$content, $variables ) {
 			                 	     "MfA63ot4B7Cp",
 					         	     1,
 					         	     ["backend"],
-					         	     "orchestrator" ) ;
+					         	      "orchestrator" ) ;
 			}
 		}
 	}

@@ -19,6 +19,16 @@ function only_one_result( $values ) {
 }
 
 
+function only_one_result_json_decode( $values ) {
+	if( count($values)!=1 ) {
+		// error_out( "it actually does not look like we only have 1 result...", false, false ) ;
+		return $values ;
+	}
+
+	return json_decode( $values[0], true ) ;
+}
+
+
 function array_path( $values, $path="" ) {
 	$values_original = $values ;
 	$path_original = $path ;
