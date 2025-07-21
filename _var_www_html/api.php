@@ -1015,7 +1015,14 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 
 				if( $get_process_function_name!="" ) {
 					if( !function_exists($get_process_function_name) ) {
-						error_out( "get_process function {$get_process_function_name} is NOT defined, it needs to be", false, false ) ;
+						(new error_())->add( "get_process function {$get_process_function_name} is NOT defined, it needs to be",
+		                             "D3n657jcS8k4",
+		                             2,
+		                             ["backend","configuration"],
+								     "orchestrator",
+								     null,
+								     0,
+								     10 ) ;
 						$system_config = json_encode( $results ) ;
 					} else {
 						// ok we're good
