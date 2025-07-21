@@ -964,99 +964,107 @@ function compile_system_microservice_list( $system_config, &$microservice_list, 
 function interpret_config_as_current_state( &$system_config, $microservices_mapping ) {
 	if( is_array($system_config) ) {
 		if( array_key_exists('get', $system_config) ) {
-			$results = run_microservice_sequence( $system_config['get'], $microservices_mapping, false ) ;
-			if( !array_key_exists('get_process', $system_config) ) {
-                foreach( $results as &$result ) {
-                        $potential_result = json_decode( $result, true ) ;
-	                if( is_array($potential_result) ) {
-	                        $result = $potential_result ;
+			if( is_array($system_config['get']) ) {
+				$results = run_microservice_sequence( $system_config['get'], $microservices_mapping, false ) ;
+				if( !array_key_exists('get_process', $system_config) ) {
+	                foreach( $results as &$result ) {
+	                        $potential_result = json_decode( $result, true ) ;
+		                if( is_array($potential_result) ) {
+		                        $result = $potential_result ;
+		                }
 	                }
-                }
-                unset( $result ) ;
-                $system_config = $results ;
-			} else if( gettype($system_config['get_process'])=="array" ) {
-				if( isset($system_config['get_process']['function_name']) ) {
+	                unset( $result ) ;
+	                $system_config = $results ;
+				} else if( gettype($system_config['get_process'])=="array" ) {
+					if( isset($system_config['get_process']['function_name']) ) {
+						require_once( "system_state_process_functions.php" ) ;
+			    		if( !function_exists($system_config['get_process']['function_name']) ) {
+			    			(new error_())->add( "get_process function: {$system_config['get_process']['function_name']} is not defined",
+					                             "ORji83l6j6Xt",
+					                             2,
+					                             ["backend","configuration"],
+									             "orchestrator",
+									             null,
+									             0,
+									             10 ) ;
+			    			// to backend information from percolating up to the client
+			    			$system_config = null ;
+						} else {
+							$arguments = array( 'results'=>json_encode($results) ) ;
+							if( isset($system_config['get_process']['function_arguments']) ) {
+								foreach( $system_config['get_process']['function_arguments'] as $argument_name=>$argument_value ) {
+									$arguments[$argument_name] = $argument_value ;
+								}
+							}
+							$system_config = call_user_func_array( $system_config['get_process']['function_name'], $arguments ) ;
+						}
+			    	} else {
+				    	// simple key based variable substitution
+						foreach( $results as &$result ) {
+							$result = json_decode( $result, true ) ;
+						}
+						unset( $result ) ;
+						$system_config = true_if_exact_match( $results, $system_config['get_process'] ) ;
+					}
+				} else if( gettype($system_config['get_process'])=="string" ) {
 					require_once( "system_state_process_functions.php" ) ;
-		    		if( !function_exists($system_config['get_process']['function_name']) ) {
-		    			(new error_())->add( "get_process function: {$system_config['get_process']['function_name']} is not defined",
-				                             "ORji83l6j6Xt",
-				                             2,
-				                             ["backend","configuration"],
-								             "orchestrator",
-								             null,
-								             0,
-								             10 ) ;
-		    			// to backend information from percolating up to the client
-		    			$system_config = null ;
-					} else {
-						$arguments = array( 'results'=>json_encode($results) ) ;
-						if( isset($system_config['get_process']['function_arguments']) ) {
-							foreach( $system_config['get_process']['function_arguments'] as $argument_name=>$argument_value ) {
-								$arguments[$argument_name] = $argument_value ;
+
+					$get_process_function_name = $system_config['get_process'] ;
+					$get_process_function_name = explode( "(", $get_process_function_name ) ;
+					$get_process_function_name = $get_process_function_name[0] ;
+					$get_process_function_name = trim( $get_process_function_name ) ;
+
+					if( $get_process_function_name!="" ) {
+						if( !function_exists($get_process_function_name) ) {
+							(new error_())->add( "get_process function {$get_process_function_name} is NOT defined, it needs to be",
+			                             "D3n657jcS8k4",
+			                             2,
+			                             ["backend","configuration"],
+									     "orchestrator",
+									     null,
+									     0,
+									     10 ) ;
+							$system_config = json_encode( $results ) ;
+						} else {
+							// ok we're good
+							// foreach( $results as &$result ) {
+							// 	$result = json_decode( $result, true ) ;
+							// }
+							unset( $result ) ;
+							if( substr_count($system_config['get_process'], "(")==1 &&
+								substr_count($system_config['get_process'], ")")==1 ) {
+								// looks like we have arguments to worry about
+								$args = explode( "(", $system_config['get_process'] ) ;
+								$args = implode( "(", array_slice($args, 1) ) ;
+								$args = explode( ")", $args ) ;
+								$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
+								$args = trim( $args ) ;
+								$args = json_decode( $args, true ) ;
+								$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
+							} else {
+								$system_config = call_user_func( $get_process_function_name, $results ) ;
 							}
 						}
-						$system_config = call_user_func_array( $system_config['get_process']['function_name'], $arguments ) ;
 					}
-		    	} else {
-			    	// simple key based variable substitution
-					foreach( $results as &$result ) {
-						$result = json_decode( $result, true ) ;
-					}
-					unset( $result ) ;
-					$system_config = true_if_exact_match( $results, $system_config['get_process'] ) ;
-				}
-			} else if( gettype($system_config['get_process'])=="string" ) {
-				require_once( "system_state_process_functions.php" ) ;
-
-				$get_process_function_name = $system_config['get_process'] ;
-				$get_process_function_name = explode( "(", $get_process_function_name ) ;
-				$get_process_function_name = $get_process_function_name[0] ;
-				$get_process_function_name = trim( $get_process_function_name ) ;
-
-				if( $get_process_function_name!="" ) {
-					if( !function_exists($get_process_function_name) ) {
-						(new error_())->add( "get_process function {$get_process_function_name} is NOT defined, it needs to be",
-		                             "D3n657jcS8k4",
-		                             2,
-		                             ["backend","configuration"],
-								     "orchestrator",
-								     null,
-								     0,
-								     10 ) ;
-						$system_config = json_encode( $results ) ;
-					} else {
-						// ok we're good
-						// foreach( $results as &$result ) {
-						// 	$result = json_decode( $result, true ) ;
-						// }
-						unset( $result ) ;
-						if( substr_count($system_config['get_process'], "(")==1 &&
-							substr_count($system_config['get_process'], ")")==1 ) {
-							// looks like we have arguments to worry about
-							$args = explode( "(", $system_config['get_process'] ) ;
-							$args = implode( "(", array_slice($args, 1) ) ;
-							$args = explode( ")", $args ) ;
-							$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
-							$args = trim( $args ) ;
-							$args = json_decode( $args, true ) ;
-							$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
-						} else {
-							$system_config = call_user_func( $get_process_function_name, $results ) ;
-						}
-					}
+				} else {
+					(new error_())->add( "get_process is set to an unknown type, it needs to either be an array or a string",
+			                             "D3n657jcS8k4",
+			                             2,
+			                             ["backend","configuration"],
+									     "orchestrator",
+									     null,
+									     0,
+									     10 ) ;
+	    			// to prevent backend information from percolating up to the client
+	    			$system_config = null ;
 				}
 			} else {
-				(new error_())->add( "get_process is set to an unknown type, it needs to either be an array or a string",
-		                             "D3n657jcS8k4",
-		                             2,
-		                             ["backend","configuration"],
-								     "orchestrator",
-								     null,
-								     0,
-								     10 ) ;
-    			// to backend information from percolating up to the client
-    			$system_config = null ;
+				// to prevent backend information from percolating up to the client
+				$system_config = null ;
 			}
+		} else if( array_key_exists('set', $system_config) ) {
+			// to prevent backend information from percolating up to the client
+			$system_config = null ;
 		} else {
 			$keys = array_keys( $system_config ) ;
 			foreach( $keys as $key ) {
@@ -1070,12 +1078,14 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 
 
 function merge_current_state_with_update( $system_config, &$system_state, $update, &$accumulated_microservice_sequences, &$error ) {
-	if( is_array($update) ) {
+	if( is_array($update) &&
+	    !array_key_exists('get', $system_config) &&
+		!array_key_exists('set', $system_config) ) {
 		if( is_array($system_config) &&
 			is_array($system_state) ) {
 			foreach( $update as $update_key=>$update_value ) {
-				if( isset($system_config[$update_key]) &&
-					isset($system_state[$update_key]) ) {
+				if( is_array($system_config) && array_key_exists($update_key, $system_config) &&
+					is_array($system_state) && array_key_exists($update_key, $system_state) ) {
 					return merge_current_state_with_update( $system_config[$update_key], $system_state[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
 				} else {
 					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
