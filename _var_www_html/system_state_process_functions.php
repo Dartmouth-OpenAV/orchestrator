@@ -10,6 +10,9 @@ function value_is_the_one_variable( $value ) {
 
 
 function only_one_result( $values ) {
+	if( count($values)==0 ) {
+		return null ;
+	}
 	if( count($values)!=1 ) {
 		// error_out( "it actually does not look like we only have 1 result...", false, false ) ;
 		return $values ;
@@ -20,6 +23,9 @@ function only_one_result( $values ) {
 
 
 function only_one_result_json_decode( $values ) {
+	if( count($values)==0 ) {
+		return null ;
+	}
 	if( count($values)!=1 ) {
 		// error_out( "it actually does not look like we only have 1 result...", false, false ) ;
 		return $values ;
@@ -54,31 +60,6 @@ function array_path( $values, $path="" ) {
 
 	return $values ;
 }
-
-
-// 2024-06-17 - Ben - This should no long be in use, was replaced with a more proper method. I verified that no config uses it.
-// function process_suggested_meeting( $values ) {
-	
-
-// 	if( isset($values[0]['success']) &&
-// 	    $values[0]['success']===true &&
-// 	    isset($values[0]['data']) &&
-// 	    $values[0]['data']!==false ) {
-// 		$zoom_links = json_decode( file_get_contents("thayer_zoom_links.json"), true ) ;
-// 		if( array_key_exists($values[0]['data'], $zoom_links) &&
-// 			isset($zoom_links[$values[0]['data']]['id']) &&
-// 			isset($zoom_links[$values[0]['data']]['password']) &&
-// 			isset($zoom_links[$values[0]['data']]['name']) ) {
-// 			return $zoom_links[$values[0]['data']] ;
-// 	    } else {
-// 		    return false ;
-// 	    }
-// 	} else {
-// 	    return false ;
-// 	}
-
-// 	return false ;
-// }
 
 
 function process_zoom_room_scheduled_meetings( $values ) {
