@@ -697,7 +697,8 @@ function clear_system_cache() {
 
 function cli_refresh_system_config( $system ) {
 	$content = false ;
-	if( getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
+	if( array_key_exists('SYSTEM_CONFIGURATIONS_VIA_VOLUME', getenv()) &&
+		getenv()['SYSTEM_CONFIGURATIONS_VIA_VOLUME']=="true" ) {
 		// if we made it here, we've already verified that /system_configurations exists
 		if( file_exists("/system_configurations/{$system}.json") ) {
 			$content = safe_file_get_contents( "/system_configurations/{$system}.json" ) ;
