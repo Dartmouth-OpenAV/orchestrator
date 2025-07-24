@@ -542,7 +542,7 @@ function system_config_and_state_refresh( $system ) {
 		close_with_204( "initializing" ) ;
 	} else {
 		// we've refreshed it and we need to keep it fresh
-		if( (time()-filemtime("/data/{$system}.state.json"))>60 ) { // 1 minute
+		if( (time()-filemtime("/data/{$system}.state.json"))>4 ) { // 4 seconds
 			$refresh = false ;
 			if( !file_exists("/data/{$system}.state.json.lock") ) {
 				$refresh = true ;
