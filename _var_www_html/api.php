@@ -965,7 +965,8 @@ function compile_system_microservice_list( $system_config, &$microservice_list, 
 function interpret_config_as_current_state( &$system_config, $microservices_mapping ) {
 	if( is_array($system_config) ) {
 		if( array_key_exists('get', $system_config) ) {
-			if( is_array($system_config['get']) ) {
+			if( is_array($system_config['get']) &&
+				count($system_config['get'])>0 ) {
 				$results = run_microservice_sequence( $system_config['get'], $microservices_mapping, false ) ;
 				if( !array_key_exists('get_process', $system_config) ) {
 	                foreach( $results as &$result ) {
