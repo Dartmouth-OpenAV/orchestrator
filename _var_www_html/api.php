@@ -767,7 +767,8 @@ function cli_refresh_system_config( $system ) {
 	}
 
 	process_system_config( $content, ['system'=>$system,
-									  'version'=>get_version(true)] ) ;
+									  'version'=>get_version(true),
+									  'config_hash'=>md5($content)] ) ;
 
 	$retrieve_initial_system_state = false ;
 	if( !file_exists("/data/{$system}.config.json") ) {
