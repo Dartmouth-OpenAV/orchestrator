@@ -1089,7 +1089,7 @@ function merge_current_state_with_update( $system_config, &$system_state, $updat
 			foreach( $update as $update_key=>$update_value ) {
 				if( is_array($system_config) && array_key_exists($update_key, $system_config) &&
 					is_array($system_state) && array_key_exists($update_key, $system_state) ) {
-					return merge_current_state_with_update( $system_config[$update_key], $system_state[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
+					merge_current_state_with_update( $system_config[$update_key], $system_state[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
 				} else {
 					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
 					                 	 "7ND4dL6XCmus",
