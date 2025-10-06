@@ -2062,7 +2062,6 @@ function process_system_config( &$content, $variables ) {
 	// we keep track of all microservices/devices this orchestrator is using so we can gather errors from them in cli_gather_microservice_errors()
 	$microservices = [] ;
 	compile_system_microservice_list( $content, $microservices, true ) ;
-	file_put_contents( "/dev/shm/test", var_export($microservices, true) ) ;
 	foreach( $microservices as $microservice ) {
 		$device = implode( ":", array_slice(explode(":", $microservice), 1) ) ;
 		$device = explode( "/", $device )[1] ;
