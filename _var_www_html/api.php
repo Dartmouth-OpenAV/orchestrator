@@ -853,7 +853,12 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 	interpret_config_as_current_state( $system_config, $microservices_mapping ) ;
 	$system_state = $system_config ; // really just to disambiguate that it was transformed
 
-	(new log_())->add_entry( $system, "state_refresh", $system_state ) ;
+	if( $direct_call_and_override ||
+		!file_exists("/data/{$system}.state.log") ||
+		(file_exists("/data/{$system}.state.log") && (time()-filemtime("/data/{$system}.state.log"))>60) ) { // 1 minute
+		touch( "/data/{$system}.state.log" ) ;
+		(new log_())->add_entry( $system, "state_refresh", $system_state ) ;
+	}
 	
 	$system_state = json_encode( $system_state ) ;
 
