@@ -35,9 +35,19 @@ function only_one_result_json_decode( $values ) {
 }
 
 
-function array_path( $values, $path="" ) {
+function only_one_result_json_decode_and_path( $values, $path="" ) {
 	$values_original = $values ;
 	$path_original = $path ;
+
+	if( count($values)==0 ) {
+		return null ;
+	}
+	if( count($values)!=1 ) {
+		// error_out( "it actually does not look like we only have 1 result...", false, false ) ;
+		return $values ;
+	}
+
+	$values = json_decode( $values[0], true ) ;
 
 	if( $path=="" ) {
 		return $values ;
@@ -225,7 +235,7 @@ function set_process_volume( $value, $min_volume=0, $max_volume=100 ) {
 
 
 function get_process_volume( $values, $min_volume=0, $max_volume=100 ) {
-	$results = json_decode( $values, true ) ;
+	$results = $values ;
 	if( !is_array($results) ) {
 		// error_out( "get_process_volume $results is not an array", false, false ) ;
 		return null ;

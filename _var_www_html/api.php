@@ -27,8 +27,8 @@ if( php_sapi_name()!="cli" ) {
 }
 
 
-//  ___            _           _           
-// |_ _|_ __   ___| |_   _  __| | ___  ___ 
+//  ___            _           _
+// |_ _|_ __   ___| |_   _  __| | ___  ___
 //  | || '_ \ / __| | | | |/ _` |/ _ \/ __|
 //  | || | | | (__| | |_| | (_| |  __/\__ \
 // |___|_| |_|\___|_|\__,_|\__,_|\___||___/
@@ -47,10 +47,10 @@ require_once( "include/web_calls.php" ) ;
 
 
 
-//  _____            _                                      _   
-// | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_ 
+//  _____            _                                      _
+// | ____|_ ____   _(_)_ __ ___  _ __  _ __ ___   ___ _ __ | |_
 // |  _| | '_ \ \ / / | '__/ _ \| '_ \| '_ ` _ \ / _ \ '_ \| __|
-// | |___| | | \ V /| | | | (_) | | | | | | | | |  __/ | | | |_ 
+// | |___| | | \ V /| | | | (_) | | | | | | | | |  __/ | | | |_
 // |_____|_| |_|\_/ |_|_|  \___/|_| |_|_| |_| |_|\___|_| |_|\__|
 //
 
@@ -111,7 +111,7 @@ foreach( $required_environment_variables as $required_environment_variable ) {
 			close_with_500( "server misconfiguration 7s7tkkwi4A0x" ) ;
 			exit( 1 ) ; // for good measure
 		}
-		
+
 	}
 	define( $required_environment_variable, getenv()[$required_environment_variable] ) ;
 }
@@ -161,12 +161,12 @@ if( !(isset(getenv()['ADDRESS_MICROSERVICES_BY_NAME']) &&
 
 
 
-//   ____ _     ___ 
+//   ____ _     ___
 //  / ___| |   |_ _|
-// | |   | |    | | 
-// | |___| |___ | | 
+// | |   | |    | |
+// | |___| |___ | |
 //  \____|_____|___|
-        
+
 
 if( php_sapi_name()==="cli" ) {
 	$function_name = false ;
@@ -231,12 +231,12 @@ function run_cli_function( $function_name, $parameters=[], $asynchronous=true ) 
 
 
 
-//  ____             _   _             
-// |  _ \ ___  _   _| |_(_)_ __   __ _ 
+//  ____             _   _
+// |  _ \ ___  _   _| |_(_)_ __   __ _
 // | |_) / _ \| | | | __| | '_ \ / _` |
 // |  _ < (_) | |_| | |_| | | | | (_| |
 // |_| \_\___/ \__,_|\__|_|_| |_|\__, |
-//                               |___/ 
+//                               |___/
 
 $method = $_SERVER['REQUEST_METHOD'] ;
 $request_uri = $_SERVER['REQUEST_URI'] ;
@@ -299,7 +299,7 @@ function route_function_if_authorized( $function_name ) {
 		}
 	}
 
-	if( !file_exists("/authorization.json") ) {	
+	if( !file_exists("/authorization.json") ) {
 		(new error_())->add( "missing authorization.json file",
 		                     "FTcPYB05oK33",
 				             2,
@@ -444,7 +444,7 @@ function route_function_if_authorized( $function_name ) {
 			}
 		}
 	}
-	
+
 
 	if( $authorized===true ) {
 		$function_name() ;
@@ -457,12 +457,12 @@ function route_function_if_authorized( $function_name ) {
 
 
 
-//  ____            _                     
-// / ___| _   _ ___| |_ ___ _ __ ___  ___ 
+//  ____            _
+// / ___| _   _ ___| |_ ___ _ __ ___  ___
 // \___ \| | | / __| __/ _ \ '_ ` _ \/ __|
 //  ___) | |_| \__ \ ||  __/ | | | | \__ \
 // |____/ \__, |___/\__\___|_| |_| |_|___/
-//        |___/            
+//        |___/
 
 
 function system_config_and_state_refresh( $system ) {
@@ -509,7 +509,7 @@ function system_config_and_state_refresh( $system ) {
 						             10 ) ;
 				$refresh = true ;
 			}
-		    
+
 		    if( $refresh ) {
 				touch( "/data/{$system}.config.json.lock" ) ;
 				run_cli_function( "cli_refresh_system_config", [$system], true ) ;
@@ -559,7 +559,7 @@ function system_config_and_state_refresh( $system ) {
 						             10 ) ;
 				$refresh = true ;
 			}
-		    
+
 		    if( $refresh ) {
 				touch( "/data/{$system}.state.json.lock" ) ;
 				run_cli_function( "cli_refresh_system_state", [$system], true ) ;
@@ -644,7 +644,7 @@ function update_system_state() {
 		close_with_500( "server error" ) ;
 	}
 	$system_state = json_decode( safe_file_get_contents("/data/{$system}.state.json"), true ) ;
-	
+
 	// we merge it all with the desired update
 	$accumulated_microservice_sequences = [] ;
 	$error = null ;
@@ -778,7 +778,7 @@ function cli_refresh_system_config( $system ) {
 	safe_file_put_contents( "/data/{$system}.config.json", $content ) ;
 	@unlink( "/data/{$system}.config.json.lock" ) ;
 
-	
+
 	if( $retrieve_initial_system_state ) {
 		touch( "/data/{$system}.state.json.lock" ) ;
 		run_cli_function( "cli_refresh_system_state", [$system] ) ;
@@ -859,12 +859,12 @@ function cli_refresh_system_state( $system, $direct_call_and_override=false ) {
 		touch( "/data/{$system}.state.log" ) ;
 		(new log_())->add_entry( $system, "state_refresh", $system_state ) ;
 	}
-	
+
 	$system_state = json_encode( $system_state ) ;
 
 	safe_file_put_contents( "/data/{$system}.state.json", $system_state ) ;
 	@unlink( "/data/{$system}.state.json.lock" ) ;
-	
+
 	if( $direct_call_and_override ) {
 		return $system_state ;
 	}
@@ -998,7 +998,7 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 			    			// to backend information from percolating up to the client
 			    			$system_config = null ;
 						} else {
-							$arguments = ['values'=>json_encode($results)] ;
+							$arguments = ['values'=>$results] ;
 							if( isset($system_config['get_process']['function_arguments']) ) {
 								foreach( $system_config['get_process']['function_arguments'] as $argument_name=>$argument_value ) {
 									$arguments[$argument_name] = $argument_value ;
@@ -1491,7 +1491,7 @@ function run_microservice_sequence( $microservice_sequence, $microservices_mappi
 	            $results[] = null ;
 	        }
 
-	        
+
 	        if( $proceed_with_call ) {
 	        	$url ;
 	        	if( $microservices_mapping===null ) {
@@ -1654,8 +1654,8 @@ function is_fresh_device( $fqdn ) {
 
 
 
-//   ____ _ _            _       
-//  / ___| (_) ___ _ __ | |_ ___ 
+//   ____ _ _            _
+//  / ___| (_) ___ _ __ | |_ ___
 // | |   | | |/ _ \ '_ \| __/ __|
 // | |___| | |  __/ | | | |_\__ \
 //  \____|_|_|\___|_| |_|\__|___/
@@ -1699,7 +1699,7 @@ function create_client_error() {
 		}
 		$severity = $data['severity'] ;
 	}
-	
+
 	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data['message']}",
 		                 $code,
         				 $severity,
@@ -1712,12 +1712,12 @@ function create_client_error() {
 
 
 
-//   ____           _          
-//  / ___|__ _  ___| |__   ___ 
+//   ____           _
+//  / ___|__ _  ___| |__   ___
 // | |   / _` |/ __| '_ \ / _ \
 // | |__| (_| | (__| | | |  __/
 //  \____\__,_|\___|_| |_|\___|
-                             
+
 
 function clear_cache() {
 	shell_exec( "rm /data/*" ) ; // kind of yucky but harmless
@@ -1729,12 +1729,12 @@ function clear_cache() {
 
 
 
-//  __  __             _ _             _             
-// |  \/  | ___  _ __ (_) |_ ___  _ __(_)_ __   __ _ 
+//  __  __             _ _             _
+// |  \/  | ___  _ __ (_) |_ ___  _ __(_)_ __   __ _
 // | |\/| |/ _ \| '_ \| | __/ _ \| '__| | '_ \ / _` |
 // | |  | | (_) | | | | | || (_) | |  | | | | | (_| |
 // |_|  |_|\___/|_| |_|_|\__\___/|_|  |_|_| |_|\__, |
-//                                             |___/ 
+//                                             |___/
 
 
 function cli_gather_microservice_errors() {
@@ -1890,7 +1890,7 @@ function get_version( $return_only=false ) {
 }
 
 
-function list_errors() {	
+function list_errors() {
 	$code = null ;
 	if( isset($_GET['code']) ) {
 		$code = $_GET['code'] ;
@@ -1929,15 +1929,15 @@ function list_errors() {
 
 
 
-//  _   _ _____ _____ ____  
-// | | | |_   _|_   _|  _ \ 
+//  _   _ _____ _____ ____
+// | | | |_   _|_   _|  _ \
 // | |_| | | |   | | | |_) |
-// |  _  | | |   | | |  __/ 
-// |_| |_| |_|   |_| |_|    
-                          
+// |  _  | | |   | | |  __/
+// |_| |_| |_|   |_| |_|
+
 function get_request_body( $decode_json=true ) {
 	$body = file_get_contents( "php://input" ) ;
-	
+
 	if( $decode_json ) {
 		$body = json_decode( $body, true ) ;
 	}
@@ -2014,8 +2014,8 @@ function close_with_500( $message ) {
 
 
 
- //  _   _ _   _ _ _ _   _           
- // | | | | |_(_) (_) |_(_) ___  ___ 
+ //  _   _ _   _ _ _ _   _
+ // | | | | |_(_) (_) |_(_) ___  ___
  // | | | | __| | | | __| |/ _ \/ __|
  // | |_| | |_| | | | |_| |  __/\__ \
  //  \___/ \__|_|_|_|\__|_|\___||___/
