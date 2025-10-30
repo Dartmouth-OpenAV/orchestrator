@@ -224,8 +224,8 @@ function set_process_volume( $value, $min_volume=0, $max_volume=100 ) {
 }
 
 
-function get_process_volume( $results, $min_volume=0, $max_volume=100 ) {
-	$results = json_decode( $results, true ) ;
+function get_process_volume( $values, $min_volume=0, $max_volume=100 ) {
+	$results = json_decode( $values, true ) ;
 	if( !is_array($results) ) {
 		// error_out( "get_process_volume $results is not an array", false, false ) ;
 		return null ;

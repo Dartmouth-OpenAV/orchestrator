@@ -998,7 +998,7 @@ function interpret_config_as_current_state( &$system_config, $microservices_mapp
 			    			// to backend information from percolating up to the client
 			    			$system_config = null ;
 						} else {
-							$arguments = array( 'results'=>json_encode($results) ) ;
+							$arguments = ['values'=>json_encode($results)] ;
 							if( isset($system_config['get_process']['function_arguments']) ) {
 								foreach( $system_config['get_process']['function_arguments'] as $argument_name=>$argument_value ) {
 									$arguments[$argument_name] = $argument_value ;
