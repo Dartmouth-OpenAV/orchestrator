@@ -719,7 +719,7 @@ function cli_refresh_system_config( $system ) {
 		$content = $github->get_file( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH . "/{$system}.json" ) ;
 	}
 
-	if( $content===false ) {
+	if( $content===false || $content===null ) {
 		// something went wrong
 		if( file_exists("/data/{$system}.config.json") ) {
 			(new error_())->add( "unable to refresh config for system: {$system}, I have a previous copy at least",
