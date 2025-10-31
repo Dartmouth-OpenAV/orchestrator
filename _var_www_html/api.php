@@ -488,7 +488,11 @@ function system_config_and_state_refresh( $system ) {
 			touch( "/data/{$system}.config.json.lock" ) ;
 			run_cli_function( "cli_refresh_system_config", [$system], true ) ;
 		} // else, something else had the lock already must be refreshing it
-		close_with_204( "initializing" ) ;
+		if( file_exists("/data/{$system}.config.no_exists") ) {
+			close_with_404( "config file doesn't exist" ) ;
+		} else {
+			close_with_204( "initializing" ) ;
+		}
 	} else {
 		// we've heard from it but let's keep the config fresh
 		if( (time()-filemtime("/data/{$system}.config.json"))>900 || // 15 minutes by default (GitHub)
@@ -702,7 +706,9 @@ function cli_refresh_system_config( $system ) {
 		// if we made it here, we've already verified that /system_configurations exists
 		if( file_exists("/system_configurations/{$system}.json") ) {
 			$content = safe_file_get_contents( "/system_configurations/{$system}.json" ) ;
-		} // else it'll get picked up as an error later
+		} else {
+			$content = null ; // this will trigger the "not found" scenario
+		}
 	} else {
 		$github_credentials = false ;
 		if( defined('SYSTEM_CONFIGURATIONS_GITHUB_TOKEN') ) {
@@ -719,7 +725,7 @@ function cli_refresh_system_config( $system ) {
 		$content = $github->get_file( SYSTEM_CONFIGURATIONS_GITHUB_REPOSITORY_PATH . "/{$system}.json" ) ;
 	}
 
-	if( $content===false || $content===null ) {
+	if( $content===false ) {
 		// something went wrong
 		if( file_exists("/data/{$system}.config.json") ) {
 			(new error_())->add( "unable to refresh config for system: {$system}, I have a previous copy at least",
@@ -741,6 +747,33 @@ function cli_refresh_system_config( $system ) {
 					             10 ) ;
 		}
 		return false ;
+	}
+
+	if( $content===null ) {
+		// the file didn't exist on Github's side
+		if( file_exists("/data/{$system}.config.json") ) {
+			(new error_())->add( "config for system: {$system} doesn't exist, I have a previous copy at least",
+				                 "QUaafH41Jq42",
+						         3,
+						         ["backend"],
+					             "orchestrator",
+					             $system,
+					             1,
+					             10 ) ;
+		} else {
+			(new error_())->add( "config for system doesn't exist: {$system}",
+				                 "2T0SyP57vfit",
+						         1,
+						         ["backend"],
+					             "orchestrator",
+					             $system,
+					             0,
+					             10 ) ;
+			touch( "/data/{$system}.config.no_exists" ) ;
+		}
+		return false ;
+	} else if( file_exists("/data/{$system}.config.no_exists") ) {
+		@unlink( "/data/{$system}.config.no_exists" ) ;
 	}
 
 	if( !is_valid_system_config($content) ) {
