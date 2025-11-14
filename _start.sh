@@ -67,6 +67,9 @@ nohup bash -c "php /var/www/html/include/web_calls.php > /var/log/web_calls.log"
 echo "> microservice error gathering"
 nohup bash -c "php /var/www/html/api.php cli_gather_microservice_errors > /var/log/cli_gather_microservice_errors.log" &
 
+echo "> healthcheck"
+nohup bash -c "php /var/www/html/api.php cli_healthcheck > /var/log/cli_healthcheck.log" &
+
 echo "> memcached"
 nohup bash -c "memcached /usr/bin/memcached -m 64 -p 11211 -u memcache -l 127.0.0.1" &
 

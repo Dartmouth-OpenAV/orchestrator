@@ -2,7 +2,7 @@
 
 
 require_once( "error.php" ) ;
-require_once( "include/time.php" ) ;
+require_once( "time.php" ) ;
 require_once( "web_calls.php" ) ;
 
 class log_ {
