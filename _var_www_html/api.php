@@ -177,11 +177,11 @@ if( php_sapi_name()==="cli" ) {
 	if( isset($argv[1]) ) {
 		$function_name = $argv[1] ;
 	} else {
-		"error: no function_name argument given\n" ;
+		echo "error: no function_name argument given\n" ;
 		exit( 1 ) ;
 	}
 	if( !function_exists($function_name) ) {
-		echo "function doesn't exist" ;
+		echo "function doesn't exist\n" ;
 		exit( 1 ) ;
 	}
 
@@ -1854,9 +1854,9 @@ function cli_gather_microservice_errors() {
             $microservices_mapping = get_microservices_mapping() ;
             $url ;
         	if( $microservices_mapping===null ) {
-        		$url = $repo_name . "/errors" ;
+        		$url = $repo_name . "/" . $device . "/errors" ;
         	} else {
-		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/errors" ;
+		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" . $device . "/errors" ;
 		    }
 	        echo ">     repo_owner: {$repo_owner}\n" ;
 	        echo ">     repo_path: {$repo_path}\n" ;
@@ -1877,76 +1877,78 @@ function cli_gather_microservice_errors() {
 			curl_close( $ch ) ;
 
 			if( $response_code==200 ) {
-				$response = @json_decode( $response, true ) ;
-				if( !is_array($response) ) {
-					(new error_())->add( "microservice {$microservice} didn't hand back an array when listing errors with url: {$url}",
-			                             "g8637mvubS1I",
-			                             3,
-			                             ["backend",
-			                              "microservice"],
-			                              $microservice ) ;
-				} else {
-					foreach( $response as $time_stamp=>$data ) {
-						if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,}/', $time_stamp) ) {
-							(new error_())->add( "microservice {$microservice} handed back an error with an invalid time_stamp: {$time_stamp}" ,
-					                             "6k43LX5qB5E8",
-					                             3,
-					                             ["backend",
-					                              "microservice"],
-					                              $microservice,
-					                              null,
-					                              0,
-					                              60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator
-						} else if( $is_string($data) || is_array($data) ) {
-							$message = "" ;
-							if( is_string($data) ) {
-								$message = $data ;
-							} else if( is_array($data) ) {
-								$message = (array_key_exists('message', $data))?$data['message']:var_export( $data, true ) ;
-							} else {
-								$message = "unreachable point #IEEA329q5Cv3" ;
-							}
-							$code = (is_array($data) && array_key_exists('code', $data))?$data['code']:"GG68bGF98wyT" ;
-							$severity = (is_array($data) && array_key_exists('severity', $data))?$data['severity']:3 ;
-							$tags = ["backend", "microservice"] ;
-							if( is_array($data) &&
-								array_key_exists('tags', $data) &&
-								is_array($data['tags']) ) {
-								foreach( $data['tags'] as $tag ) {
-									if( !in_array($tag, $tags) ) {
-										$tags[] = $tag ;
-									}
-								}
-							}
-							// source is not overridable
-							$source = $microservice ;
-							// neither is system
-							$system = null ;
-							$tolerance_per_hour = (is_array($data) && array_key_exists('tolerance_per_hour', $data))?$data['tolerance_per_hour']:0 ;
-							$limit_per_hour = (is_array($data) && array_key_exists('limit_per_hour', $data))?$data['limit_per_hour']:60 ;
+                if (trim($response) !== "null") {
+                    $response = @json_decode( $response, true ) ;
+                    if( !is_array($response) ) {
+                        (new error_())->add( "microservice {$microservice} didn't hand back an array or null when listing errors with url: {$url}",
+                                            "g8637mvubS1I",
+                                            3,
+                                            ["backend",
+                                            "microservice"],
+                                            $microservice ) ;
+                    } else {
+                        foreach( $response as $time_stamp=>$data ) {
+                            if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,}/', $time_stamp) ) {
+                                (new error_())->add( "microservice {$microservice} handed back an error with an invalid time_stamp: {$time_stamp}" ,
+                                                    "6k43LX5qB5E8",
+                                                    3,
+                                                    ["backend",
+                                                    "microservice"],
+                                                    $microservice,
+                                                    null,
+                                                    0,
+                                                    60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator
+                            } else if( $is_string($data) || is_array($data) ) {
+                                $message = "" ;
+                                if( is_string($data) ) {
+                                    $message = $data ;
+                                } else if( is_array($data) ) {
+                                    $message = (array_key_exists('message', $data))?$data['message']:var_export( $data, true ) ;
+                                } else {
+                                    $message = "unreachable point #IEEA329q5Cv3" ;
+                                }
+                                $code = (is_array($data) && array_key_exists('code', $data))?$data['code']:"GG68bGF98wyT" ;
+                                $severity = (is_array($data) && array_key_exists('severity', $data))?$data['severity']:3 ;
+                                $tags = ["backend", "microservice"] ;
+                                if( is_array($data) &&
+                                    array_key_exists('tags', $data) &&
+                                    is_array($data['tags']) ) {
+                                    foreach( $data['tags'] as $tag ) {
+                                        if( !in_array($tag, $tags) ) {
+                                            $tags[] = $tag ;
+                                        }
+                                    }
+                                }
+                                // source is not overridable
+                                $source = $microservice ;
+                                // neither is system
+                                $system = null ;
+                                $tolerance_per_hour = (is_array($data) && array_key_exists('tolerance_per_hour', $data))?$data['tolerance_per_hour']:0 ;
+                                $limit_per_hour = (is_array($data) && array_key_exists('limit_per_hour', $data))?$data['limit_per_hour']:60 ;
 
-							(new error_())->add( $data,
-					                             $code,
-					                             $severity,
-					                             $tags,
-					                             $source,
-					                             $system,
-					                             $tolerance_per_hour,
-					                             $limit_per_hour,
-					                             $time_stamp ) ;
-						} else {
-							(new error_())->add( "microservice {$microservice} handed back an error with an invalid message: " . var_export($message, true) ,
-					                             "ig5s9B61Pz5d",
-					                             3,
-					                             ["backend",
-					                              "microservice"],
-					                              $microservice,
-					                              null,
-					                              0,
-					                              60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DoS the orchestrator ) ;
-						}
-					}
-				}
+                                (new error_())->add( $data,
+                                                    $code,
+                                                    $severity,
+                                                    $tags,
+                                                    $source,
+                                                    $system,
+                                                    $tolerance_per_hour,
+                                                    $limit_per_hour,
+                                                    $time_stamp ) ;
+                            } else {
+                                (new error_())->add( "microservice {$microservice} handed back an error with an invalid message: " . var_export($message, true) ,
+                                                    "ig5s9B61Pz5d",
+                                                    3,
+                                                    ["backend",
+                                                    "microservice"],
+                                                    $microservice,
+                                                    null,
+                                                    0,
+                                                    60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DoS the orchestrator ) ;
+                            }
+                        }
+                    }
+                }
 			}
 		}
 		sleep( 60 ) ;
@@ -2240,12 +2242,11 @@ function process_system_config( &$content, $variables ) {
 	$microservices = [] ;
 	compile_system_microservice_list( $content, $microservices, true ) ;
 	foreach( $microservices as $microservice ) {
-		$device = implode( ":", array_slice(explode(":", $microservice), 1) ) ;
-		$device = explode( "/", $device )[1] ;
-		$microservice = implode( ":", array_slice(explode(":", $microservice), 0, 2) ) ;
-		if( $microservice[strlen($microservice)-1]=="/" ) {
-			$microservice = substr( $microservice, 0, -1 ) ;
-		}
+		$exploded_microservice = explode( "/", $microservice );
+		$device = end($exploded_microservice) ;
+		$device_index = array_search($device, $exploded_microservice) ;
+		$microservice = implode( "/", array_slice($exploded_microservice, 0, $device_index) ) ;
+
 		sqlite_query( "/dev/shm/microservices.db",
 					  "INSERT OR IGNORE INTO data (microservice,
 												   device) VALUES (:microservice,
