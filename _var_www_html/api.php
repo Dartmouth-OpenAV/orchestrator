@@ -1019,7 +1019,1029 @@ function compile_system_microservice_list( $system_config, &$microservice_list, 
 						if( !in_array($microservice_key, $microservice_list) ) {
 							$microservice_list[] = $microservice_key ;
 						}
+					} elseif( gettype($microservice_call)=="array" &&
+							  isset($microservice_call['driver']) &&
+							  preg_match('/^[A-Za-z\-\_0-9\/]+\:[A-Za-z\-\_0-9]+\/.+$/', $microservice_call['driver']) ) {
+						$microservice_name = explode( ":", $microservice_call['driver'] ) ;
+						$microservice_name = $microservice_name[0] ;
+						$microservice_tag  = explode( ":", $microservice_call['driver'] ) ;
+						$microservice_tag  = $microservice_tag[1] ;
+						$microservice_tag  = explode( "/", $microservice_tag ) ;
+						$microservice_tag  = $microservice_tag[0] ;
+                        if( $microservice_tag=="current" ) {
+                            $microservice_tag = get_version( true ) ;
+                        }
+						$microservice_key = "{$microservice_name}:{$microservice_tag}" ;
+						if( $include_devices ) {
+							$device = implode( ":", array_slice(explode(":", $microservice_call['driver']), 1) ) ;
+							$device = explode( "/", $device )[1] ;
+							$microservice_key .= "/{$device}" ;
+						}
+						if( !in_array($microservice_key, $microservice_list) ) {
+							$microservice_list[] = $microservice_key ;
+						}
 					}
+				}
+			} else {
+				compile_system_microservice_list( $value, $microservice_list, $include_devices ) ;
+			}
+		}
+	}
+}
+
+
+function interpret_config_as_current_state( &$system_config, $microservices_mapping ) {
+	if( is_array($system_config) ) {
+		if( array_key_exists('get', $system_config) ) {
+			if( is_array($system_config['get']) &&
+				count($system_config['get'])>0 ) {
+				$results = run_microservice_sequence( $system_config['get'], $microservices_mapping, false ) ;
+				if( !array_key_exists('get_process', $system_config) ) {
+	                foreach( $results as &$result ) {
+	                        $potential_result = json_decode( $result, true ) ;
+		                if( is_array($potential_result) ) {
+		                        $result = $potential_result ;
+		                }
+	                }
+	                unset( $result ) ;
+	                $system_config = $results ;
+				} else if( gettype($system_config['get_process'])=="array" ) {
+					if( isset($system_config['get_process']['function_name']) ) {
+						require_once( "system_state_process_functions.php" ) ;
+			    		if( !function_exists($system_config['get_process']['function_name']) ) {
+			    			(new error_())->add( "get_process function: {$system_config['get_process']['function_name']} is not defined",
+					                             "ORji83l6j6Xt",
+					                             2,
+					                             ["backend",
+					                              "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+			    			// to backend information from percolating up to the client
+			    			$system_config = null ;
+						} else {
+							$arguments = ['values'=>$results] ;
+							if( isset($system_config['get_process']['function_arguments']) ) {
+								foreach( $system_config['get_process']['function_arguments'] as $argument_name=>$argument_value ) {
+									$arguments[$argument_name] = $argument_value ;
+								}
+							}
+							$system_config = call_user_func_array( $system_config['get_process']['function_name'], $arguments ) ;
+						}
+			    	} else {
+				    	// simple key based variable substitution
+						foreach( $results as &$result ) {
+							$result = json_decode( $result, true ) ;
+						}
+						unset( $result ) ;
+						$system_config = true_if_exact_match( $results, $system_config['get_process'] ) ;
+					}
+				} else if( gettype($system_config['get_process'])=="string" ) {
+					require_once( "system_state_process_functions.php" ) ;
+
+					$get_process_function_name = $system_config['get_process'] ;
+					$get_process_function_name = explode( "(", $get_process_function_name ) ;
+					$get_process_function_name = $get_process_function_name[0] ;
+					$get_process_function_name = trim( $get_process_function_name ) ;
+
+					if( $get_process_function_name!="" ) {
+						if( !function_exists($get_process_function_name) ) {
+							(new error_())->add( "get_process function {$get_process_function_name} is NOT defined, it needs to be",
+			                             "D3n657jcS8k4",
+			                             2,
+			                             ["backend",
+			                              "configuration"],
+									     gethostname(),
+									     null,
+									     0,
+									     10 ) ;
+							$system_config = json_encode( $results ) ;
+						} else {
+							// ok we're good
+							// foreach( $results as &$result ) {
+							// 	$result = json_decode( $result, true ) ;
+							// }
+							unset( $result ) ;
+							if( substr_count($system_config['get_process'], "(")==1 &&
+								substr_count($system_config['get_process'], ")")==1 ) {
+								// looks like we have arguments to worry about
+								$args = explode( "(", $system_config['get_process'] ) ;
+								$args = implode( "(", array_slice($args, 1) ) ;
+								$args = explode( ")", $args ) ;
+								$args = implode( ")", array_slice($args, 0, count($args)-1) ) ;
+								$args = trim( $args ) ;
+								$args = json_decode( $args, true ) ;
+								$system_config = call_user_func( $get_process_function_name, $results, $args ) ;
+							} else {
+								$system_config = call_user_func( $get_process_function_name, $results ) ;
+							}
+						}
+					}
+				} else {
+					(new error_())->add( "get_process is set to an unknown type, it needs to either be an array or a string",
+			                             "D3n657jcS8k4",
+			                             2,
+			                             ["backend",
+			                              "configuration"],
+									     gethostname(),
+									     null,
+									     0,
+									     10 ) ;
+	    			// to prevent backend information from percolating up to the client
+	    			$system_config = null ;
+				}
+			} else {
+				// to prevent backend information from percolating up to the client
+				$system_config = null ;
+			}
+		} else if( array_key_exists('set', $system_config) ) {
+			// to prevent backend information from percolating up to the client
+			$system_config = null ;
+		} else {
+			$keys = array_keys( $system_config ) ;
+			foreach( $keys as $key ) {
+				interpret_config_as_current_state( $system_config[$key], $microservices_mapping ) ;
+			}
+		}
+	} else {
+		// TODO error here?
+	}
+}
+
+
+function merge_current_state_with_update( $system_config, &$system_state, $update, &$accumulated_microservice_sequences, &$error ) {
+	if( is_array($update) &&
+	    !array_key_exists('get', $system_config) &&
+		!array_key_exists('set', $system_config) ) {
+		if( is_array($system_config) &&
+			is_array($system_state) ) {
+			foreach( $update as $update_key=>$update_value ) {
+				if( is_array($system_config) && array_key_exists($update_key, $system_config) &&
+					is_array($system_state) && array_key_exists($update_key, $system_state) ) {
+					merge_current_state_with_update( $system_config[$update_key], $system_state[$update_key], $update[$update_key], $accumulated_microservice_sequences, $error ) ;
+				} else {
+					(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
+					                 	 "7ND4dL6XCmus",
+							         	 2,
+							         	 ["backend"],
+							             gethostname(),
+							             null,
+							             0,
+							             10 ) ;
+					$error = "invalid update" ;
+				}
+			}
+		} else {
+			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\ndoesn't line up in structure with system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT) . "\n\nor system state:\n" . json_encode($system_state, JSON_PRETTY_PRINT),
+			                 	 "xetOz4m4J0t2",
+					         	 2,
+					         	 ["backend"],
+					             gethostname(),
+					             null,
+					             0,
+					             10 ) ;
+			$error = "invalid update" ;
+		}
+	} else {
+		if( isset($system_config['set']) ) {
+
+			$variables = [] ;
+		    if( isset($system_config['set_process']) ) {
+		    	require_once( "system_state_process_functions.php" ) ;
+		    	if( gettype($system_config['set_process'])=="string" ) {
+		    		if( trim($system_config['set_process'])!="" ) {
+			    		if( !function_exists($system_config['set_process']) ) {
+			    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
+						                 	     "w1ZqaCb014Th",
+								         	     2,
+								         	     ["backend",
+								         	      "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+			    		} else {
+					    	$variables = call_user_func( $system_config['set_process'], $update ) ;
+					    }
+					}
+			    } else if( gettype($system_config['set_process'])=="array" ) {
+			    	if( isset($system_config['set_process']['function_name']) ) {
+			    		if( !function_exists($system_config['set_process']['function_name']) ) {
+			    			(new error_())->add( "unknown set_process function: {$system_config['set_process']}",
+						                 	     "2cz9L2ZhTOzP",
+								         	     2,
+								         	     ["backend",
+								         	      "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+						} else {
+							$arguments = ['value'=>$update] ;
+							if( isset($system_config['set_process']['function_arguments']) ) {
+								foreach( $system_config['set_process']['function_arguments'] as $argument_name=>$argument_value ) {
+									$arguments[$argument_name] = $argument_value ;
+								}
+							}
+							$variables = call_user_func_array( $system_config['set_process']['function_name'], $arguments ) ;
+						}
+			    	} else {
+				    	// simple key based variable substitution
+				    	$value_key = $update ;
+				    	// JSON doesn't support booleans as indices
+				    	if( $value_key===true ) {
+				    		$value_key = "true" ;
+				    	} elseif( $value_key===false ) {
+				    		$value_key = "false" ;
+				    	}
+				    	if( gettype($value_key)!="string" ) {
+				    		(new error_())->add( "unknown type for set_process key",
+						                 	     "aU8BoySsf80A",
+								         	     2,
+								         	     ["backend",
+								         	      "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+				    	} else if( !array_key_exists($value_key, $system_config['set_process']) ) {
+				    		(new error_())->add( "unhandled value key for set_process",
+						                 	     "oUNna7FYk98j",
+								         	     2,
+								         	     ["backend",
+								         	      "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+				    	} else {
+				    		foreach( $system_config['set_process'][$value_key] as $variable_name=>$variable_value ) {
+				    			$variables[$variable_name] = $variable_value ;
+				    		}
+						}
+					}
+			    } else {
+			    	(new error_())->add( "unknown type for set_process",
+				                 	     "uxDQ8Rp9L224",
+						         	     2,
+						         	     ["backend",
+						         	      "configuration"],
+							             gethostname(),
+							             null,
+							             0,
+							             10 ) ;
+			    }
+		    }
+		    if( count($variables)>0 ) {
+				$matchess = [] ;
+
+				$set_as_string = json_encode( $system_config['set'] ) ;
+				preg_match_all( '/\$[a-zA-Z]{1,}[a-zA-Z0-9-_]{0,}/', $set_as_string, $matchess ) ;
+				foreach( $matchess as $matches ) {
+					foreach( $matches as $match ) {
+						$match_no_dollar = str_replace( '$', "", $match ) ;
+						if( array_key_exists($match_no_dollar, $variables) ) {
+							$set_as_string = str_replace( $match, $variables[$match_no_dollar], $set_as_string ) ;
+						} else {
+							(new error_())->add( "variable: {$match} not found in computed variables:\n" . var_export( $variables, true ),
+						                 	     "16W5p2y3pI2R",
+								         	     3,
+								         	     ["backend",
+								         	      "configuration"],
+									             gethostname(),
+									             null,
+									             0,
+									             10 ) ;
+						}
+					}
+				}
+				$system_config['set'] = json_decode( $set_as_string, true ) ;
+		    }
+
+		    if( isset($system_config['set_process']) ) {
+			    unset( $system_config['set_process'] ) ;
+			}
+			if( isset($system_config['get']) ) {
+			    unset( $system_config['get'] ) ;
+			}
+			if( isset($system_config['get_process']) ) {
+			    unset( $system_config['get_process'] ) ;
+			}
+
+			$accumulated_microservice_sequences[] = $system_config['set'] ;
+			$system_state = $update ;
+		} else {
+			(new error_())->add( "requested update:\n" . json_encode($update, JSON_PRETTY_PRINT) . "\n\nis trying to set a variable that is not settable in system config:\n" . json_encode($system_config, JSON_PRETTY_PRINT),
+			                 	 "I5h05S2P7yQX",
+					         	 2,
+					         	 ["backend",
+					         	  "configuration"],
+					             gethostname(),
+					             null,
+					             0,
+					             10 ) ;
+			$error = "invalid update" ;
+		}
+	}
+}
+
+
+function extract_microservice_call_parts( $microservice_call ) {
+
+    $parts = explode( "/", $microservice_call ) ;
+
+    $device_index = false ;
+    for( $i=0 ; $i<count($parts) ; $i++ ) {
+        if( $i>0 && substr_count($parts[$i], ".")>0 ) {
+            $device_index = $i ;
+            break ;
+        }
+    }
+
+    $registry_path = "" ;
+    $device_username = "" ;
+    $device_password = "" ;
+    $device_fqdn = "" ;
+    $microservice_path = "" ;
+
+    if( $device_index!==false ) {
+        if( substr_count($parts[$device_index], "@")==1 ) {
+            $parts[$device_index] = explode( "@", $parts[$device_index] ) ;
+            $credentials = $parts[$device_index][0] ;
+            $parts[$device_index] = $parts[$device_index][1] ;
+            $credentials = explode( ":", $credentials ) ;
+            $device_username = $credentials[0] ;
+            if( count($credentials)==2 ) {
+                $device_password = $credentials[1] ;
+            }
+        }
+        $device_fqdn = $parts[$device_index] ;
+        $device_fqdn = resolve_dns( $device_fqdn ) ;
+        $registry_path = "/" . implode( "/", array_slice($parts, 0, $device_index) ) ;
+        $microservice_path = "/" . implode( "/", array_slice($parts, $device_index+1) ) ;
+
+        return ['registry_path'=>$registry_path,
+                'device_username'=>$device_username,
+                'device_password'=>$device_password,
+                'device_fqdn'=>resolve_dns($device_fqdn),
+                'microservice_path'=>$microservice_path] ;
+
+    } else {
+        return false ;
+    }
+}
+
+
+function run_microservice_sequence( $microservice_sequence, $microservices_mapping, $is_a_set=true /* as opposed to a get, set invalidates the cache, it's safer to default to no cache if not specified */ ) {
+	global $verbose ;
+
+	$results = [] ;
+
+    $memcached = new memcached_() ;
+
+	if( !is_array($microservice_sequence) ) {
+		(new error_())->add( "invalid microservice sequence: " . var_export($microservice_sequence, true),
+                             "i61Mn7v74J9P",
+                             2,
+                             ["backend",
+                             "configuration"],
+				              gethostname(),
+				              null,
+				              0,
+				              10 ) ;
+        return $results ; // which should only be [] at this point
+	}
+	foreach( $microservice_sequence as $microservice_call ) {
+		if( gettype($microservice_call)==="array" &&
+			array_key_exists('url', $microservice_call) ) {
+			// arbitrary web call
+			$request_url     = $microservice_call['url'] ;
+			$request_method  = $microservice_call['method']??"GET" ;
+			$request_headers = $microservice_call['headers']??[] ;
+			$request_body    = $microservice_call['body']??"" ;
+
+			if( $verbose ) {
+		        echo "> web call: {$request_url}\n" ;
+		        echo ">   parameters:\n" ;
+		        echo ">     request_method: {$request_method}\n" ;
+		        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
+		        echo ">     request_body: {$request_body}\n" ;
+		    }
+
+		    if( $is_a_set ) {
+		    	if( $verbose ) {
+		    		echo ">   is_a_set\n" ;
+		    	}
+		    	$results[] = (new web_calls_())->execute_web_call( $request_url,
+	                                 				               $request_method,
+	                                 				               $request_headers,
+	                                 				               $request_body ) ;
+		    } else {
+		    	$refresh_every_x_minutes = $microservice_call['refresh_every_x_minutes']??1 ;
+				$expected_status_code               = $microservice_call['expected_status_code']??200 ;
+				$return_if_not_expected_status_code = $microservice_call['return_if_not_expected_status_code']??null ;
+
+		        if( $verbose ) {
+			        echo ">     refresh_every_x_minutes: {$refresh_every_x_minutes}\n" ;
+			        echo ">     expected_status_code: {$expected_status_code}\n" ;
+			        echo ">     return_if_not_expected_status_code: {$return_if_not_expected_status_code}\n" ;
+			    }
+			    $result = (new web_calls_())->get_decoupled_data( $request_url,
+		                                 				          $request_method,
+		                                 				          $request_headers,
+		                                 				          $request_body,
+		                                 				          $refresh_every_x_minutes ) ;
+			    if( $result['response_code']==$expected_status_code ) {
+				    $results[] = $result['response_body'] ;
+				} else {
+					$results[] = $return_if_not_expected_status_code ;
+				}
+			}
+		} else {
+			// microservice call
+	        $request_method = "GET" ;
+	        $request_headers = [] ;
+	        $request_body = "" ;
+	        $repo_owner = false ;
+	        $repo_path = false ;
+	        $repo_name = false ;
+	        $tag = false ;
+	        $device_username = false ;
+	        $device_password = false ;
+	        $device_fqdn = "" ;
+	        $microservice_path_and_get_variables = "" ;
+	        $microservice_error_to_return = false ;
+	        $no_cache = false ;
+
+	        if( gettype($microservice_call)==="array" ) {
+	            if( isset($microservice_call['method']) &&
+	                is_string($microservice_call['method']) ) {
+	                $request_method = $microservice_call['method'] ;
+	            }
+	            if( isset($microservice_call['headers']) &&
+	                is_array($microservice_call['headers']) ) {
+	                $request_headers = $microservice_call['headers'] ;
+	            }
+	            if( isset($microservice_call['body']) ) {
+	                $request_body = $microservice_call['body'] ;
+	            }
+	            if( isset($microservice_call['error_return']) ) {
+	                $microservice_error_to_return = $microservice_call['error_return'] ;
+	            }
+	            if( isset($microservice_call['no_cache']) &&
+	                $microservice_call['no_cache']===true ) {
+	                $no_cache = true ;
+	            }
+
+	            if( isset($microservice_call['microservice']) &&
+	                is_string($microservice_call['microservice']) ) {
+	                $microservice_call = $microservice_call['microservice'] ;
+	            } else if( isset($microservice_call['driver']) && // legacy name
+	                       is_string($microservice_call['driver']) ) {
+	                $microservice_call = $microservice_call['driver'] ;
+	            }
+	        }
+
+	        if( gettype($microservice_call)==="string" ) {
+	        	$repo_parts = explode( "/", $microservice_call ) ;
+	            $repo_owner = $repo_parts[0] ;
+	            $repo_path = "/" ;
+	            $i=1 ;
+	            while( $i<count($repo_parts) &&
+	            	   substr_count($repo_parts[$i], ":")==0 ) {
+	            	$repo_path .= "{$repo_parts[$i]}/" ;
+		            $i++ ;
+	            }
+	            $repo_name = "" ;
+	            if( substr_count($repo_parts[$i], ":")==1 ) {
+	            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
+	            }
+	            $tag = explode( ":", explode("/", $microservice_call)[$i] )[1] ;
+	            $i++ ;
+	            $device_fqdn = explode( "/", $microservice_call )[$i] ;
+	            if( preg_match('/^.*\:.*\@.*$/', $device_fqdn) ) { // simple auth
+	                $device_username = explode( ":", explode("@", $device_fqdn)[0] )[0] ;
+	                $device_password = explode( ":", explode("@", $device_fqdn)[0] )[1] ;
+	                $device_fqdn = explode( "@", $device_fqdn )[1] ;
+	            }
+	            $i++ ;
+	            $microservice_path_and_get_variables = "/" . implode( "/", array_slice(explode("/", $microservice_call), $i) ) ;
+	        }
+
+	        if( $verbose ) {
+	        	$microservice_call_to_display = $microservice_call ;
+	        	if( gettype($microservice_call_to_display)!="string" ) {
+	        		$microservice_call_to_display = var_export( $microservice_call_to_display, true ) ;
+	        	}
+		        echo "> microservice call: {$microservice_call_to_display}\n" ;
+		        echo ">   parameters:\n" ;
+		        echo ">     request_method: {$request_method}\n" ;
+		        echo ">     request_headers:\n" ; print_r( $request_headers ) ;
+		        echo ">     request_body: {$request_body}\n" ;
+		        echo ">     repo_owner: {$repo_owner}\n" ;
+		        echo ">     repo_path: {$repo_path}\n" ;
+		        echo ">     repo_name: {$repo_name}\n" ;
+		        echo ">     tag: {$tag}\n" ;
+		        echo ">     device_username: {$device_username}\n" ;
+		        echo ">     device_password: {$device_password}\n" ;
+		        echo ">     device_fqdn: {$device_fqdn}\n" ;
+		        echo ">     microservice_path_and_get_variables: {$microservice_path_and_get_variables}\n" ;
+		    }
+
+		    $proceed_with_call = true ;
+
+	        if( $repo_owner===false || $repo_path===false || $repo_name===false || $tag==="false" ) {
+	            (new error_())->add( "invalid microservice call: {$microservice_call}",
+	                                 "EQr87gl3YCKm",
+	                                 2,
+	                                 ["backend",
+	                                  "configuration"],
+						             gethostname(),
+						             null,
+						             0,
+						             10 ) ;
+	            echo ">   invalid microservice call: {$microservice_call}\n" ;
+	            $proceed_with_call = false ;
+	            $results[] = null ;
+	        }
+
+	        if( $tag=="current" ) {
+	            $tag = get_version( true ) ;
+	        }
+
+	        if( $microservices_mapping!==null &&
+	        	!isset($microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"]) ) {
+	            (new error_())->add( "missing microservice mapping for: {$repo_owner}/{$repo_name}:{$tag}",
+	                                 "fN45HdtBEv8T",
+	                                 2,
+	                                 ["backend",
+	                             	  "orchestrator"],
+						             gethostname(),
+						             null,
+						             0,
+						             10 ) ;
+	            echo ">   missing microservice mapping for: {$repo_owner}{$repo_path}{$repo_name}:{$tag}\n" ;
+	            $proceed_with_call = false ;
+	            $results[] = null ;
+	        }
+
+
+	        if( $proceed_with_call ) {
+	        	$url ;
+	        	if( $microservices_mapping===null ) {
+	        		$url = $repo_name . "/" ;
+	        	} else {
+			        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" ;
+			    }
+		        if( $device_username!==false ||
+		        	$device_password!==false ) {
+		        	if( $device_username!==false ) {
+		        		$url .= $device_username ;
+		        	}
+		        	$url .= ":" ;
+		        	if( $device_password!==false ) {
+		        		$url .= $device_password ;
+		        	}
+		        	$url .= "@" ;
+		        }
+		        $url .= $device_fqdn . $microservice_path_and_get_variables ;
+		        if( $verbose ) {
+		        	echo ">   url: {$url}\n" ;
+		        }
+				$cache_data = null ;
+				$cache_keys = null ;
+		        // microservice
+				$cache_keys = $memcached->retrieve( $device_fqdn ) ;
+				if( $is_a_set && $cache_keys!==null ) {
+					if( $verbose ) {
+			        	echo ">   wiping cache for device: {$device_fqdn}\n" ;
+			        }
+					// we're setting on the device, we want to wipe its cache for subsequent gets to get new data
+		            //   that's because some endpoints might be interdependent and changing one might affect another
+		            //   for example, changing the volume might unmute
+					foreach( $cache_keys as $cache_key ) {
+						$memcached->delete( $cache_key ) ;
+					}
+					$memcached->delete( $device_fqdn ) ;
+				} else {
+					// we're getting, maybe we can hit the cache
+					$cache_data = $memcached->retrieve( $url ) ;
+					if( $verbose ) {
+			        	echo ">   checking cache for data\n" ;
+			        }
+				}
+
+				if( !$is_a_set &&
+					$cache_data!==null ) {
+					if( $verbose ) {
+			        	echo ">     cache hit\n" ;
+			        }
+					$results[] = $cache_data ;
+				} else {
+					if( $verbose ) {
+			        	echo ">   proceeding with call\n" ;
+			        }
+					$ch = curl_init() ;
+					curl_setopt( $ch, CURLOPT_URL, $url ) ;
+					curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false ) ;
+					curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, $request_method ) ;
+					if( $request_body!=="" ) {
+						if( gettype($request_body)=="string" ) {
+		        			curl_setopt( $ch, CURLOPT_POSTFIELDS, $request_body ) ;
+		        		} else {
+		        			curl_setopt( $ch, CURLOPT_POSTFIELDS, json_encode($request_body) ) ;
+		        		}
+		    		}
+		    		if( count($request_headers)>0 ) {
+						curl_setopt( $ch, CURLOPT_HTTPHEADER, $request_headers ) ;
+		    		}
+					curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 1 ) ;
+					curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ) ;
+					curl_setopt( $ch, CURLOPT_TIMEOUT, 5 ) ;
+					$response = curl_exec( $ch ) ;
+					$response_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE ) ;
+					$curl_errno = curl_errno( $ch ) ;
+					curl_close( $ch ) ;
+
+					if( $verbose ) {
+						echo ">     response_code: {$response_code}\n" ;
+						echo ">     response:\n" ;
+						print_r( $response ) ;
+						echo "\n" ;
+					}
+
+					if( $response_code==200 ) {
+						$results[] = $response ;
+						if( !$is_a_set ) {
+							if( $no_cache!==true ) {
+								echo ">  storing in cache\n" ;
+								if( $cache_keys===null || !is_array($cache_keys) ) {
+									$cache_keys = [] ;
+								}
+								if( !in_array($url, $cache_keys) ) {
+									$cache_keys[] = $url ;
+								}
+								$memcached->store( $device_fqdn, $cache_keys, 0 ) ;
+								$memcached->store( $url, $response, 60 ) ;
+							}
+						}
+					} else { // $response_code!=200
+						$only_a_204_on_a_fresh_microservice = false ;
+						if( $response_code==204 && is_fresh_device($device_fqdn) ) {
+							$only_a_204_on_a_fresh_microservice = true ;
+						}
+
+						if( !$only_a_204_on_a_fresh_microservice ) {
+							$timeout_potentially = "" ;
+							if( $curl_errno==28 ) {
+								$timeout_potentially = " (which is a timeout)" ;
+							}
+
+							if( $microservice_error_to_return!==false ) {
+								$results[] = $microservice_error_to_return ;
+							} else {
+								$results[] = null ;
+							}
+							(new error_())->add( "microservice call failed:\n\nrequest:\n  method: {$request_method}\n  url: {$url}  body: {$request_body}\n  headers: " . implode( "\n    ", $request_headers ) . "\n\nresponse:\n  response_code: {$response_code}\n  response: {$response}\n  curl_errno: {$curl_errno}{$timeout_potentially}",
+		                 	                     "qv23K8hX8Y0R",
+				         	                     1,
+				         	                     ["backend",
+				         	                      "microservice"],
+				                                 gethostname(),
+				                                 null,
+				                                 0,
+				                                 10 ) ;
+						}
+					}
+				}
+			}
+		}
+    }
+
+    if( $verbose ) {
+    	echo "> all calls results:\n" ;
+    	print_r( $results ) ;
+    }
+	return $results ;
+}
+
+
+function is_valid_system_config( $config ) {
+	if( json_decode($config)===null ) {
+		return false ;
+	}
+
+	// TODO more checks
+	return true ;
+}
+
+
+function is_valid_system_name( $system ) {
+	return preg_match( '/^[0-9a-zA-Z\-\_]{1,}$/', $system ) ;
+}
+
+
+function is_fresh_device( $fqdn ) {
+    // TODO at some point we'll actually want to keep track of new devices so we can handle 204s properly
+    return true ;
+}
+
+
+
+
+//   ____ _ _            _
+//  / ___| (_) ___ _ __ | |_ ___
+// | |   | | |/ _ \ '_ \| __/ __|
+// | |___| | |  __/ | | | |_\__ \
+//  \____|_|_|\___|_| |_|\__|___/
+
+
+function create_client_error() {
+	$data = get_request_body() ;
+
+	if( $data===false ||
+		!is_array($data) ||
+		!isset($data['message']) ) {
+		close_with_400( "Client error message needed in request body. Example request body:
+			{
+				\"message\":\"error occured\",
+				\"code\":\"dTp42810boGa\", # optional, random 12 char string, must satisfy /^[A-Za-z0-9]{12}$/
+				\"severity\":2 # optional in [1,3], 1 being highest severity
+			}" ) ;
+	}
+
+	$client_ip = $_SERVER['REMOTE_ADDR'] ;
+	if( isset($_SERVER['HTTP_X_FORWARDED_FOR']) ) {
+	    $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ;
+	}
+	$client_dns = resolve_dns( $client_ip ) ;
+	$client_user_agent = $_SERVER['HTTP_USER_AGENT'] ;
+
+	$code = short_alnum_hash( $client_ip ) ; // default for client errors
+	if( isset($data['code']) ) {
+		if( !preg_match('/^[A-Za-z0-9]{12}$/', $data['code']) ) {
+			close_with_400( "error code must satisfy /^[A-Za-z0-9]{12}$/" ) ;
+		}
+		$code = $data['code'] ;
+	}
+
+	$severity = 3 ; // default for client errors
+	if( isset($data['severity']) ) {
+		if( !is_int($data['severity']) ||
+			$data['severity']<1 ||
+			$data['severity']>3 ) {
+			close_with_400( "error severity must be in [1,3], 1 being highest severity" ) ;
+		}
+		$severity = $data['severity'] ;
+	}
+
+	(new error_())->add( "Client error reported from: {$client_ip} / {$client_dns} / {$client_user_agent}\n\nMessage: {$data['message']}",
+		                 $code,
+        				 $severity,
+				         ["client"],
+				         $client_dns,
+				         null,
+				         0,
+				         60 ) ; // we don't want to let clients DoS
+
+	close_with_200( "ok" ) ;
+}
+
+
+
+
+//   ____           _
+//  / ___|__ _  ___| |__   ___
+// | |   / _` |/ __| '_ \ / _ \
+// | |__| (_| | (__| | | |  __/
+//  \____\__,_|\___|_| |_|\___|
+
+
+function clear_cache() {
+	shell_exec( "rm /data/*" ) ; // kind of yucky but harmless
+	$memcached = new memcached_() ;
+	$memcached->flush() ;
+	close_with_200( true ) ;
+}
+
+
+
+
+//  __  __             _ _             _
+// |  \/  | ___  _ __ (_) |_ ___  _ __(_)_ __   __ _
+// | |\/| |/ _ \| '_ \| | __/ _ \| '__| | '_ \ / _` |
+// | |  | | (_) | | | | | || (_) | |  | | | | | (_| |
+// |_|  |_|\___/|_| |_|_|\__\___/|_|  |_|_| |_|\__, |
+//                                             |___/
+
+
+function cli_gather_microservice_errors() {
+	while( true ) {
+		echo "> ", date( "Y-m-d H:i:s" ), "\n" ;
+		$results = sqlite_query( "/dev/shm/microservices.db",
+							     "SELECT microservice,
+									     device FROM data",
+							     [] ) ;
+		// adding the "all" devices
+		$unique_microservices = [] ;
+		foreach( $results as $result ) {
+			if( !in_array($result['microservice'], $unique_microservices) ) {
+				$unique_microservices[] = $result['microservice'] ;
+			}
+		}
+		foreach( $unique_microservices as $unique_microservice ) {
+			$results[] = ['microservice'=>$unique_microservice,
+						  'device'=>"all"] ;
+		}
+		foreach( $results as $result ) {
+			$microservice = $result['microservice'] ;
+			$device       = $result['device'] ;
+			echo ">   {$microservice}/{$device}\n" ;
+			$repo_parts = explode( "/", $microservice ) ;
+            $repo_owner = $repo_parts[0] ;
+            $repo_path = "/" ;
+            $i=1 ;
+            while( $i<count($repo_parts) &&
+            	   substr_count($repo_parts[$i], ":")==0 ) {
+            	$repo_path .= "{$repo_parts[$i]}/" ;
+	            $i++ ;
+            }
+            $repo_name = "" ;
+            if( substr_count($repo_parts[$i], ":")==1 ) {
+            	$repo_name = explode( ":", $repo_parts[$i] )[0] ;
+            }
+            $tag = explode( ":", explode("/", $microservice)[$i] )[1] ;
+            $microservices_mapping = get_microservices_mapping() ;
+            $url ;
+        	if( $microservices_mapping===null ) {
+        		$url = $repo_name . "/" . $device . "/errors" ;
+        	} else {
+		        $url = $microservices_mapping["{$repo_owner}{$repo_path}{$repo_name}:{$tag}"] . "/" . $device . "/errors" ;
+		    }
+	        echo ">     repo_owner: {$repo_owner}\n" ;
+	        echo ">     repo_path: {$repo_path}\n" ;
+	        echo ">     repo_name: {$repo_name}\n" ;
+	        echo ">     tag: {$tag}\n" ;
+	        echo ">     url: {$url}\n" ;
+
+	        $ch = curl_init() ;
+			curl_setopt( $ch, CURLOPT_URL, $url ) ;
+			curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false ) ;
+			curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, "GET" ) ;
+			curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, 1 ) ;
+			curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true ) ;
+			curl_setopt( $ch, CURLOPT_TIMEOUT, 5 ) ;
+			$response = curl_exec( $ch ) ;
+			$response_code = curl_getinfo( $ch, CURLINFO_HTTP_CODE ) ;
+			$curl_errno = curl_errno( $ch ) ;
+			curl_close( $ch ) ;
+
+			if( $response_code==200 ) {
+                if (trim($response) !== "null") {
+                    $response = @json_decode( $response, true ) ;
+                    if( !is_array($response) ) {
+                        (new error_())->add( "microservice {$microservice} didn't hand back an array or null when listing errors with url: {$url}",
+                                            "g8637mvubS1I",
+                                            3,
+                                            ["backend",
+                                            "microservice"],
+                                            $microservice ) ;
+                    } else {
+                        foreach( $response as $time_stamp=>$data ) {
+                            if( !preg_match('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{1,}/', $time_stamp) ) {
+                                (new error_())->add( "microservice {$microservice} handed back an error with an invalid time_stamp: {$time_stamp}" ,
+                                                    "6k43LX5qB5E8",
+                                                    3,
+                                                    ["backend",
+                                                    "microservice"],
+                                                    $microservice,
+                                                    null,
+                                                    0,
+                                                    60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator
+                            } else if( $is_string($data) || is_array($data) ) {
+                                $message = "" ;
+                                if( is_string($data) ) {
+                                    $message = $data ;
+                                } else if( is_array($data) ) {
+                                    $message = (array_key_exists('message', $data))?$data['message']:var_export( $data, true ) ;
+                                } else {
+                                    $message = "unreachable point #IEEA329q5Cv3" ;
+                                }
+                                $code = (is_array($data) && array_key_exists('code', $data))?$data['code']:"GG68bGF98wyT" ;
+                                $severity = (is_array($data) && array_key_exists('severity', $data))?$data['severity']:3 ;
+                                $tags = ["backend", "microservice"] ;
+                                if( is_array($data) &&
+                                    array_key_exists('tags', $data) &&
+                                    is_array($data['tags']) ) {
+                                    foreach( $data['tags'] as $tag ) {
+                                        if( !in_array($tag, $tags) ) {
+                                            $tags[] = $tag ;
+                                        }
+                                    }
+                                }
+                                // source is not overridable
+                                $source = $microservice ;
+                                // neither is system
+                                $system = null ;
+                                $tolerance_per_hour = (is_array($data) && array_key_exists('tolerance_per_hour', $data))?$data['tolerance_per_hour']:0 ;
+                                $limit_per_hour = (is_array($data) && array_key_exists('limit_per_hour', $data))?$data['limit_per_hour']:60 ;
+
+                                (new error_())->add( $data,
+                                                    $code,
+                                                    $severity,
+                                                    $tags,
+                                                    $source,
+                                                    $system,
+                                                    $tolerance_per_hour,
+                                                    $limit_per_hour,
+                                                    $time_stamp ) ;
+                            } else {
+                                (new error_())->add( "microservice {$microservice} handed back an error with an invalid message: " . var_export($message, true) ,
+                                                    "ig5s9B61Pz5d",
+                                                    3,
+                                                    ["backend",
+                                                    "microservice"],
+                                                    $microservice,
+                                                    null,
+                                                    0,
+                                                    60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DoS the orchestrator ) ;
+                            }
+                        }
+                    }
+                }
+			}
+		}
+		sleep( 60 ) ;
+	}
+}
+
+
+function cli_healthcheck() {
+	while( true ) {
+		echo "> ", date( "Y-m-d H:i:s" ), "\n" ;
+
+		echo ">   partition space check\n" ;
+		$df_output = @shell_exec( "df -P 2>/dev/null" ) ;
+		if( $df_output===null || trim($df_output)==="" ) {
+			(new error_())->add( "cli_healthcheck was unable to check partition sizes with df" ,
+	                             "5O4b3pZcdjnr",
+	                             2,
+	                             ["backend",
+	                              "orchestrator"],
+	                             gethostname(),
+	                             null,
+	                             0,
+	                             10 ) ;
+		}
+		$lines = preg_split( '/\r?\n/', trim($df_output) ) ;
+	    if( !$lines || count($lines)<2 ) {
+	        (new error_())->add( "cli_healthcheck was unable to check partition sizes with df" ,
+	                             "h26TNmV5h2KE",
+	                             2,
+	                             ["backend",
+	                              "orchestrator"],
+	                             gethostname(),
+	                             null,
+	                             0,
+	                             10 ) ;
+	    }
+
+	    // first line is the header
+	    array_shift( $lines ) ;
+	    $partitions = [];
+	    foreach( $lines as $line ) {
+	    	if( !trim($line) ) {
+	            continue ;
+	        }
+
+	        // df -P guarantees one filesystem per line, split on whitespace.
+	        $cols = preg_split( '/\s+/', trim($line) ) ;
+	        if( count($cols)<6 ) {
+	            // unexpected line format, skip it
+	            continue ;
+	        }
+	        // columns: Filesystem, 1K-blocks, Used, Available, Use%, Mounted on
+	        [$filesystem, $blocks, $used, $available, $capacity, $mountpoint] = $cols ;
+
+	        $used_percent = (int)rtrim( $capacity, "%" ) ;
+
+	        if( $used_percent>=90 ) {
+	        	echo ">   filesystem: {$filesystem} mounted on: {$mountpoint} is at 90% capacity\n" ;
+	            (new error_())->add( "filesystem: {$filesystem} mounted on: {$mountpoint} is at 90% capacity",
+	                                 "dclSa3L599dx",
+	                                 1,
+	                                 ["backend",
+	                                  "orchestrator"],
+	                                 gethostname(),
+	                                 null,
+	                                 0,
+	                                 60 ) ;
+	        } else if( $used_percent>=70 ) {
+	        	echo ">   filesystem: {$filesystem} mounted on: {$mountpoint} is at 70% capacity\n" ;
+	            (new error_())->add( "filesystem: {$filesystem} mounted on: {$mountpoint} is at 70% capacity",
+	                                 "EEBOmR0S03GO",
+	                                 2,
 				}
 			} else {
 				compile_system_microservice_list( $value, $microservice_list, $include_devices ) ;
