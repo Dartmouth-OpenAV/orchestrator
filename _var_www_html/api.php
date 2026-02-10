@@ -1019,6 +1019,27 @@ function compile_system_microservice_list( $system_config, &$microservice_list, 
 						if( !in_array($microservice_key, $microservice_list) ) {
 							$microservice_list[] = $microservice_key ;
 						}
+					} elseif( gettype($microservice_call)=="array" &&
+							  isset($microservice_call['driver']) &&
+							  preg_match('/^[A-Za-z\-\_0-9\/]+\:[A-Za-z\-\_0-9]+\/.+$/', $microservice_call['driver']) ) {
+						$microservice_name = explode( ":", $microservice_call['driver'] ) ;
+						$microservice_name = $microservice_name[0] ;
+						$microservice_tag  = explode( ":", $microservice_call['driver'] ) ;
+						$microservice_tag  = $microservice_tag[1] ;
+						$microservice_tag  = explode( "/", $microservice_tag ) ;
+						$microservice_tag  = $microservice_tag[0] ;
+                        if( $microservice_tag=="current" ) {
+                            $microservice_tag = get_version( true ) ;
+                        }
+						$microservice_key = "{$microservice_name}:{$microservice_tag}" ;
+						if( $include_devices ) {
+							$device = implode( ":", array_slice(explode(":", $microservice_call['driver']), 1) ) ;
+							$device = explode( "/", $device )[1] ;
+							$microservice_key .= "/{$device}" ;
+						}
+						if( !in_array($microservice_key, $microservice_list) ) {
+							$microservice_list[] = $microservice_key ;
+						}
 					}
 				}
 			} else {
