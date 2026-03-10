@@ -2072,7 +2072,7 @@ function cli_healthcheck() {
 function get_version( $return_only=false ) {
 	$version = "unknown" ;
 	if( file_exists("/var/version") ) {
-		$version = safe_file_get_contents( "/var/version" ) ;
+		$version = trim( safe_file_get_contents("/var/version") ) ;
 	}
 
 	if( $return_only ) {
