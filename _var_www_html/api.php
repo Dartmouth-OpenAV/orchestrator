@@ -1897,7 +1897,7 @@ function cli_gather_microservice_errors() {
 			$curl_errno = curl_errno( $ch ) ;
 			curl_close( $ch ) ;
 
-			if( $response_code==200 ) {
+			if( $response_code>=200 ) {
                 if (trim($response) !== "null") {
                     $response = @json_decode( $response, true ) ;
                     if( !is_array($response) ) {
@@ -1919,7 +1919,7 @@ function cli_gather_microservice_errors() {
                                                     null,
                                                     0,
                                                     60 ) ; // microservices are external and have potential for generating lots of error so we want to make sure they don't DOS the orchestrator
-                            } else if( $is_string($data) || is_array($data) ) {
+                            } else if( is_string($data) || is_array($data) ) {
                                 $message = "" ;
                                 if( is_string($data) ) {
                                     $message = $data ;
